@@ -1,0 +1,609 @@
+=== GUÍA DE CONFIGURACIÓN Y TESTING DEL PROYECTO ===
+Versión: 1.0.0
+Última actualización: 09/09/2025
+
+=== REQUISITOS PREVIOS ===
+
+1. Node.js ≥ 14.0.0
+2. npm ≥ 6.0.0
+3. Cuenta en Supabase
+4. (Opcional) Cuenta en Google Cloud para OAuth
+
+=== CONFIGURACIÓN INICIAL (Después de clonar) ===
+
+1. Instalar Dependencias:
+   ```bash
+   npm install
+   ```
+
+2. Configurar Variables de Entorno:
+   - Crear archivo `.env` en la raíz del proyecto
+   - Copiar el contenido de `.env.example` (si existe) o usar esta estructura:
+   ```
+   # Supabase configuration
+   SUPABASE_URL=tu_url_de_supabase
+   SUPABASE_ANON_KEY=tu_anon_key_de_supabase
+
+   # Server configuration
+   PORT=3000
+
+   # JWT configuration
+   JWT_SECRET=genera_una_clave_secreta
+   JWT_EXPIRES_IN=24h
+
+   # Google OAuth (opcional si no usarás login con Google)
+   GOOGLE_CLIENT_ID=tu_google_client_id
+   GOOGLE_CLIENT_SECRET=tu_google_client_secret
+   GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+   ```
+
+3. Generar JWT_SECRET:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+   - Copiar el resultado en la variable JWT_SECRET del archivo .env
+
+4. Configurar Base de Datos:
+   a) Crear proyecto en Supabase (https://supabase.com)
+   b) Crear las siguientes tablas en el esquema 'public':
+
+   ```sql
+   -- Tabla users
+   CREATE TABLE users (
+     id BIGSERIAL PRIMARY KEY,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     email VARCHAR NOT NULL UNIQUE,
+     password VARCHAR NOT NULL,
+     role TEXT DEFAULT 'user',
+     phone_number BIGINT
+   );
+
+   -- Tabla athlete
+   CREATE TABLE athlete (
+     id BIGSERIAL PRIMARY KEY,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     name VARCHAR NOT NULL,
+     last_name VARCHAR NOT NULL,
+     birthdate DATE,
+     height SMALLINT,
+     weight SMALLINT,
+     location_id BIGINT,
+     user_id BIGINT REFERENCES users(id),
+     sport_id BIGINT
+   );
+
+   -- Tabla agent
+   CREATE TABLE agent (
+     id BIGSERIAL PRIMARY KEY,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     name VARCHAR NOT NULL,
+     last_name VARCHAR NOT NULL,
+     description VARCHAR,
+     user_id BIGINT REFERENCES users(id),
+     location_id BIGINT
+   );
+
+   -- Tabla team
+   CREATE TABLE team (
+     id BIGSERIAL PRIMARY KEY,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     name VARCHAR NOT NULL,
+     job VARCHAR,
+     description VARCHAR,
+     user_id BIGINT REFERENCES users(id),
+     sport_id BIGINT,
+     location_id BIGINT
+   );
+   ```
+
+5. Configurar Google OAuth (opcional):
+   - Ir a Google Cloud Console (https://console.cloud.google.com)
+   - Crear un nuevo proyecto
+   - Habilitar Google OAuth API
+   - Crear credenciales OAuth 2.0
+   - Configurar pantalla de consentimiento
+   - Agregar las URLs de redirección
+   - Copiar Client ID y Client Secret al .env
+
+=== TESTING DEL PROYECTO ===
+
+1. Herramientas Recomendadas:
+   - Postman (https://www.postman.com/downloads/)
+   - Thunder Client (extensión de VS Code)
+   - Insomnia (https://insomnia.rest/download)
+
+2. Configuración en Postman/Thunder Client:
+   a) Crear una nueva colección "Backend API"
+   b) Configurar variables de entorno:
+      - BASE_URL: http://localhost:3000
+      - TOKEN: (se llenará después del login)
+
+3. Flujo de Testing:
+
+   A. Pruebas de Autenticación:
+
+   1. Registro de Usuario:
+   ```
+   POST {{BASE_URL}}/auth/signup
+   Body:
+   {
+     "email": "test@example.com",
+     "password": "password123",
+     "phone_number": 1234567890
+   }
+   ```
+
+   2. Login Normal:
+   ```
+   POST {{BASE_URL}}/auth/login
+   Body:
+   {
+     "email": "test@example.com",
+     "password": "password123"
+   }
+   ```
+   - Guardar el token recibido en la variable de entorno TOKEN
+
+   3. Login con Google:
+   ```
+   POST {{BASE_URL}}/auth/google
+   Body:
+   {
+     "token": "google-oauth-token"
+   }
+   ```
+
+   4. Completar Perfil:
+   
+   a) Perfil de Atleta:
+   ```
+   POST {{BASE_URL}}/auth/complete-profile
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "profileType": "athlete",
+     "name": "John",
+     "last_name": "Doe",
+     "birthdate": "2000-01-01",
+     "height": 180,
+     "weight": 75,
+     "location_id": 1,
+     "sport_id": 1
+   }
+   ```
+
+   b) Perfil de Agente:
+   ```
+   POST {{BASE_URL}}/auth/complete-profile
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "profileType": "agent",
+     "name": "Jane",
+     "last_name": "Smith",
+     "description": "Experienced sports agent",
+     "location_id": 1,
+     "sport_id": 1
+   }
+   ```
+
+   c) Perfil de Equipo:
+   ```
+   POST {{BASE_URL}}/auth/complete-profile
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "profileType": "team",
+     "name": "City Football Club",
+     "job": "Head Scout",
+     "description": "Premier league team",
+     "sport_id": 1,
+     "location_id": 1
+   }
+   ```
+
+   B. Pruebas de Perfil:
+
+   1. Obtener Perfil:
+   ```
+   GET {{BASE_URL}}/profile/me
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   ```
+
+   2. Actualizar Perfil:
+   ```
+   PUT {{BASE_URL}}/profile/me
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "userUpdates": {
+       "email": "updated@example.com",
+       "phone_number": 9876543210
+     },
+     "profileUpdates": {
+       // Campos según tipo de perfil
+     }
+   }
+   ```
+
+   3. Eliminar Perfil:
+   ```
+   DELETE {{BASE_URL}}/profile/me
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   ```
+
+4. Testing de Panel Admin:
+
+   A. Preparación:
+      a) Crear admin:
+         - Ir a Supabase Table Editor
+         - Encontrar el usuario en la tabla 'users'
+         - Cambiar su role a 'admin'
+         - Hacer login nuevamente para obtener token con rol admin
+   
+   B. Gestión de Usuarios:
+      1. Listar Usuarios:
+      ```
+      GET {{BASE_URL}}/admin/users
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      2. Obtener Usuario:
+      ```
+      GET {{BASE_URL}}/admin/users/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      3. Actualizar Usuario:
+      ```
+      PUT {{BASE_URL}}/admin/users/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "email": "updated@example.com",
+        "phone_number": 9876543210
+      }
+      ```
+
+      4. Cambiar Rol:
+      ```
+      PATCH {{BASE_URL}}/admin/users/:id/role
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "role": "admin" // o "user"
+      }
+      ```
+
+      5. Eliminar Usuario:
+      ```
+      DELETE {{BASE_URL}}/admin/users/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+   C. Gestión de Deportes:
+      1. Listar Deportes:
+      ```
+      GET {{BASE_URL}}/admin/sports
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      2. Crear Deporte:
+      ```
+      POST {{BASE_URL}}/admin/sports
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "name": "Football",
+        "position": "Forward"
+      }
+      ```
+
+      3. Actualizar Deporte:
+      ```
+      PUT {{BASE_URL}}/admin/sports/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "name": "Soccer",
+        "position": "Striker"
+      }
+      ```
+
+      4. Eliminar Deporte:
+      ```
+      DELETE {{BASE_URL}}/admin/sports/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+   D. Gestión de Ubicaciones:
+      1. Listar Ubicaciones:
+      ```
+      GET {{BASE_URL}}/admin/locations
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      2. Crear Ubicación:
+      ```
+      POST {{BASE_URL}}/admin/locations
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "country": "Spain",
+        "province": "Madrid",
+        "city": "Madrid"
+      }
+      ```
+
+      3. Actualizar Ubicación:
+      ```
+      PUT {{BASE_URL}}/admin/locations/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "country": "Spain",
+        "province": "Barcelona",
+        "city": "Barcelona"
+      }
+      ```
+
+      4. Eliminar Ubicación:
+      ```
+      DELETE {{BASE_URL}}/admin/locations/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+   E. Gestión de Suscripciones:
+      1. Listar Suscripciones:
+      ```
+      GET {{BASE_URL}}/admin/subscriptions
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      2. Obtener Suscripción:
+      ```
+      GET {{BASE_URL}}/admin/subscriptions/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      3. Actualizar Suscripción:
+      ```
+      PUT {{BASE_URL}}/admin/subscriptions/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      Body:
+      {
+        "end_date": "2024-12-31",
+        "status": "active"
+      }
+      ```
+
+      4. Eliminar Suscripción:
+      ```
+      DELETE {{BASE_URL}}/admin/subscriptions/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+   F. Gestión de Posts:
+      1. Listar Posts:
+      ```
+      GET {{BASE_URL}}/admin/posts
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      2. Obtener Post:
+      ```
+      GET {{BASE_URL}}/admin/posts/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+      3. Eliminar Post:
+      ```
+      DELETE {{BASE_URL}}/admin/posts/:id
+      Headers:
+      Authorization: Bearer {{TOKEN}}
+      ```
+
+5. Testing de Consultas Públicas:
+   
+   A. Deportes:
+   ```
+   GET {{BASE_URL}}/lookup/sports
+   GET {{BASE_URL}}/lookup/sports/:sportId/positions
+   ```
+
+   B. Ubicaciones:
+   ```
+   GET {{BASE_URL}}/lookup/locations
+   GET {{BASE_URL}}/lookup/locations/country/:country
+   ```
+
+6. Pruebas de Validación:
+
+   A. Campos Requeridos:
+   ```
+   POST {{BASE_URL}}/auth/complete-profile
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "profileType": "athlete"
+     // Omitir campos requeridos para probar validación
+   }
+   ```
+
+   B. Referencias Inválidas:
+   ```
+   POST {{BASE_URL}}/auth/complete-profile
+   Headers:
+   Authorization: Bearer {{TOKEN}}
+   Body:
+   {
+     "profileType": "athlete",
+     "name": "John",
+     "last_name": "Doe",
+     "location_id": 999999, // ID inexistente
+     "sport_id": 999999    // ID inexistente
+   }
+   ```
+
+   C. Permisos:
+   ```
+   GET {{BASE_URL}}/admin/users
+   Headers:
+   Authorization: Bearer {{TOKEN-NO-ADMIN}}
+   ```
+
+7. Verificación de Respuestas:
+   
+   A. Códigos de Estado:
+   - 200: Éxito en operación GET/PUT
+   - 201: Éxito en operación POST (creación)
+   - 400: Error de validación
+   - 401: No autenticado
+   - 403: No autorizado
+   - 404: Recurso no encontrado
+   - 500: Error del servidor
+
+   B. Formato de Respuesta:
+   ```json
+   // Éxito
+   {
+     "message": "Mensaje descriptivo",
+     "data": {
+       // Datos solicitados
+     }
+   }
+
+   // Error
+   {
+     "message": "Descripción del error",
+     "errors": [
+       // Detalles específicos
+     ]
+   }
+   ```
+
+8. Ejecutar el Proyecto:
+   
+   A. Desarrollo (con hot reload):
+   ```bash
+   npm run dev
+   ```
+
+   B. Producción:
+   ```bash
+   npm start
+   ```
+
+=== SOLUCIÓN DE PROBLEMAS COMUNES ===
+
+1. Problemas de Servidor:
+   
+   A. Puerto en uso:
+   ```bash
+   npx kill-port 3000
+   ```
+
+   B. Error de conexión a Supabase:
+   - Verificar credenciales en .env
+   - Verificar estado del proyecto en Supabase
+   - Comprobar conexión a internet
+   - Verificar políticas de seguridad en Supabase
+
+2. Problemas de Autenticación:
+
+   A. Token inválido:
+   - Verificar formato: "Bearer <token>"
+   - Comprobar expiración del token
+   - Verificar JWT_SECRET en .env
+
+   B. Login fallido:
+   - Verificar credenciales
+   - Comprobar estado del usuario
+   - Verificar conexión con Supabase
+
+3. Problemas de CORS:
+   - Verificar origenes permitidos en index.js
+   - Comprobar headers en peticiones
+   - Verificar métodos HTTP permitidos
+
+4. Problemas de Validación:
+   - Verificar campos requeridos
+   - Comprobar formatos de datos
+   - Validar referencias existentes
+
+=== RECOMENDACIONES DE TESTING ===
+
+1. Automatización:
+   - Mantener colección de Postman/Thunder Client
+   - Crear scripts de prueba
+   - Automatizar casos comunes
+
+2. Cobertura:
+   - Probar todos los endpoints
+   - Incluir casos de error
+   - Verificar validaciones
+   - Probar permisos
+
+3. Mantenimiento:
+   - Actualizar pruebas con cambios
+   - Documentar nuevos casos
+   - Revisar periódicamente
+   - Hacer backup de datos de prueba
+
+4. Seguridad:
+   - Probar inyección SQL
+   - Verificar autenticación
+   - Comprobar autorización
+   - Validar entrada de datos
+
+=== NOTAS DE SEGURIDAD ===
+
+1. Configuración:
+   - No compartir .env
+   - Cambiar JWT_SECRET en producción
+   - Usar HTTPS en producción
+   - Mantener dependencias actualizadas
+
+2. Datos Sensibles:
+   - No exponer información privada
+   - Encriptar datos sensibles
+   - Usar variables de entorno
+   - Hacer backup seguro
+
+3. Monitoreo:
+   - Registrar intentos de acceso
+   - Monitorear errores
+   - Revisar logs regularmente
+   - Actualizar políticas de seguridad
+
+4. Mejores Prácticas:
+   - Validar todas las entradas
+   - Sanitizar datos
+   - Limitar intentos de login
+   - Implementar rate limiting

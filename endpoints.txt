@@ -1,0 +1,267 @@
+=== ENDPOINTS DE LA API ===
+
+BASE URL: http://localhost:3000
+Versión: 1.0.0
+Última actualización: 09/09/2025
+
+=== CONVENCIONES ===
+
+1. Autenticación:
+   - La mayoría de los endpoints requieren token JWT
+   - Formato: Authorization: Bearer <token>
+   - Tokens expiran en 24 horas
+
+2. Respuestas:
+   - Formato: application/json
+   - Códigos HTTP estándar
+   - Mensajes descriptivos en errores
+
+3. Validaciones:
+   - Campos requeridos indicados
+   - Tipos de datos especificados
+   - Referencias válidas verificadas
+
+=== AUTENTICACIÓN ===
+
+1. Registro de Usuario
+   POST /auth/signup
+   Body: {
+     "email": string,
+     "password": string,
+     "role": "user", // por defecto
+     "phone_number": number
+   }
+
+2. Inicio de Sesión
+   POST /auth/login
+   Body: {
+     "email": string,
+     "password": string
+   }
+
+3. Inicio de Sesión con Google
+   POST /auth/google
+   Body: {
+     "token": string // Token de Google
+   }
+
+4. Completar Perfil
+   POST /auth/complete-profile
+   Headers: {
+     "Authorization": "Bearer <token>"
+   }
+   Body: {
+     // Para perfil de atleta
+     "name": string,
+     "last_name": string,
+     "birthdate": date,
+     "height": number,
+     "weight": number,
+     "location_id": number,
+     "sport_id": number
+   }
+   // O
+   Body: {
+     // Para perfil de agente
+     "name": string,
+     "last_name": string,
+     "description": string,
+     "location_id": number
+   }
+   // O
+   Body: {
+     // Para perfil de equipo
+     "name": string,
+     "job": string,
+     "description": string,
+     "sport_id": number,
+     "location_id": number
+   }
+
+=== PANEL DE ADMINISTRADOR ===
+(Todos requieren header: "Authorization": "Bearer <token>" y rol de admin)
+
+=== GESTIÓN DE USUARIOS ===
+
+1. Obtener Todos los Usuarios
+   GET /admin/users
+
+2. Obtener Usuario Específico
+   GET /admin/users/:id
+
+3. Crear Usuario
+   POST /admin/users
+   Body: {
+     "email": string,
+     "password": string,
+     "role": "user" | "admin",
+     "phone_number": number
+   }
+
+4. Actualizar Usuario
+   PUT /admin/users/:id
+   Body: {
+     // Campos a actualizar
+   }
+
+5. Eliminar Usuario
+   DELETE /admin/users/:id
+
+6. Cambiar Rol de Usuario
+   PATCH /admin/users/:id/role
+   Body: {
+     "role": "user" | "admin"
+   }
+
+=== GESTIÓN DE SUSCRIPCIONES ===
+
+1. Obtener Todas las Suscripciones
+   GET /admin/subscriptions
+
+2. Obtener Suscripción Específica
+   GET /admin/subscriptions/:id
+
+3. Actualizar Suscripción
+   PUT /admin/subscriptions/:id
+   Body: {
+     // Campos a actualizar
+   }
+
+4. Eliminar Suscripción
+   DELETE /admin/subscriptions/:id
+
+=== GESTIÓN DE PUBLICACIONES ===
+
+1. Obtener Todas las Publicaciones
+   GET /admin/posts
+
+2. Obtener Publicación Específica
+   GET /admin/posts/:id
+
+3. Eliminar Publicación
+   DELETE /admin/posts/:id
+
+=== GESTIÓN DE DEPORTES ===
+
+1. Obtener Todos los Deportes
+   GET /admin/sports
+
+2. Obtener Deporte Específico
+   GET /admin/sports/:id
+
+3. Crear Deporte
+   POST /admin/sports
+   Body: {
+     "name": string,
+     // otros campos necesarios
+   }
+
+4. Actualizar Deporte
+   PUT /admin/sports/:id
+   Body: {
+     // Campos a actualizar
+   }
+
+5. Eliminar Deporte
+   DELETE /admin/sports/:id
+
+=== GESTIÓN DE UBICACIONES ===
+
+1. Obtener Todas las Ubicaciones
+   GET /admin/locations
+
+2. Obtener Ubicación Específica
+   GET /admin/locations/:id
+
+3. Crear Ubicación
+   POST /admin/locations
+   Body: {
+     "name": string,
+     "country": string,
+     "city": string
+     // otros campos necesarios
+   }
+
+4. Actualizar Ubicación
+   PUT /admin/locations/:id
+   Body: {
+     // Campos a actualizar
+   }
+
+5. Eliminar Ubicación
+   DELETE /admin/locations/:id
+
+=== CONSULTAS (LOOKUP) ===
+(Todos son públicos)
+
+1. Obtener Todos los Deportes
+   GET /lookup/sports
+
+2. Obtener Todas las Ubicaciones
+   GET /lookup/locations
+
+3. Obtener Ubicaciones por País
+   GET /lookup/locations/country/:country
+
+4. Obtener Posiciones por Deporte
+   GET /lookup/sports/:sportId/positions
+
+=== PERFIL DE USUARIO ===
+(Todos requieren header: "Authorization": "Bearer <token>")
+
+1. Obtener Mi Perfil
+   GET /profile/me
+   Response: {
+     "user": {
+       "id": number,
+       "email": string,
+       "phone_number": number,
+       "role": string
+     },
+     "profileType": "athlete" | "agent" | "team",
+     "profile": {
+       // Datos del perfil según el tipo
+     }
+   }
+
+2. Actualizar Mi Perfil
+   PUT /profile/me
+   Body: {
+     "userUpdates": {
+       "email": string,      // opcional
+       "password": string,   // opcional
+       "phone_number": number // opcional
+     },
+     "profileUpdates": {
+       // Para perfil de atleta
+       "name": string,
+       "last_name": string,
+       "birthdate": date,
+       "height": number,
+       "weight": number,
+       "location_id": number,
+       "sport_id": number
+     }
+     // O para perfil de agente
+     "profileUpdates": {
+       "name": string,
+       "last_name": string,
+       "description": string,
+       "location_id": number
+     }
+     // O para perfil de equipo
+     "profileUpdates": {
+       "name": string,
+       "job": string,
+       "description": string,
+       "sport_id": number,
+       "location_id": number
+   }
+
+=== NOTAS ===
+
+- Todos los endpoints de administrador requieren autenticación y rol de admin
+- Los endpoints de perfil y completar perfil requieren autenticación
+- Los endpoints de lookup son públicos y no requieren autenticación
+- Las respuestas incluyen mensajes de error descriptivos en caso de fallos
+- Todos los endpoints devuelven respuestas en formato JSON

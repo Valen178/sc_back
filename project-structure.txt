@@ -1,0 +1,226 @@
+=== DOCUMENTACIÓN DEL PROYECTO ===
+
+📁 back/
+├── 📄 .env
+│   └── Variables de entorno:
+│       - SUPABASE_URL
+│       - SUPABASE_ANON_KEY
+│       - PORT
+│       - JWT_SECRET
+│       - JWT_EXPIRES_IN
+│       - GOOGLE_CLIENT_ID
+│       - GOOGLE_CLIENT_SECRET
+│       - GOOGLE_CALLBACK_URL
+│
+├── 📄 .gitignore
+│   └── Ignora:
+│       - node_modules
+│       - .env
+│
+├── 📄 package.json
+│   └── Scripts:
+│       - "start": "node index.js"
+│       - "dev": "nodemon index.js"
+│
+├── 📄 index.js (Archivo principal)
+│   └── Configuración:
+│       - Express
+│       - CORS
+│       - Middleware de seguridad
+│       - Rutas principales
+│       - Manejo de errores
+│
+├── 📁 src/
+│   ├── 📁 config/
+│   │
+│   ├── 📁 controllers/
+│   │   ├── 📄 authController.js
+│   │   │   └── Funciones:
+│   │   │       - signup
+│   │   │       - login
+│   │   │       - googleLogin
+│   │   │       - completeProfile
+│   │   │
+│   │   ├── 📄 adminController.js
+│   │   │   └── Funciones:
+│   │   │       - getAllUsers
+│   │   │       - getUser
+│   │   │       - updateUser
+│   │   │       - deleteUser
+│   │   │       - changeUserRole
+│   │   │
+│   │   ├── 📄 lookupController.js
+│   │   │   └── Funciones:
+│   │   │       - getAllSports
+│   │   │       - getAllLocations
+│   │   │       - getLocationsByCountry
+│   │   │       - getSportWithPositions
+│   │   │
+│   │   └── 📄 profileController.js
+│   │       └── Funciones:
+│   │           - getMyProfile
+│   │           - updateProfile
+│   │
+│   ├── 📁 middleware/
+│   │   └── 📄 auth.js
+│   │       └── Middlewares:
+│   │           - verifyToken
+│   │           - isAdmin
+│   │           - canAccessResource
+│   │
+│   └── 📁 routes/
+│       ├── 📄 authRoutes.js
+│       │   └── Rutas:
+│       │       - /signup
+│       │       - /login
+│       │       - /google
+│       │       - /complete-profile
+│       │
+│       ├── 📄 adminRoutes.js
+│       │   └── Rutas:
+│       │       - /users
+│       │       - /users/:id
+│       │       - /users/:id/role
+│       │
+│       └── 📄 lookupRoutes.js
+│           └── Rutas:
+│               - /sports
+│               - /locations
+│               - /locations/country/:country
+│               - /sports/:sportId/positions
+
+=== DEPENDENCIAS ===
+
+Principales:
+- express
+- cors
+- dotenv
+- @supabase/supabase-js
+- jsonwebtoken
+- bcrypt
+- google-auth-library
+
+Desarrollo:
+- nodemon
+
+=== TABLAS EN SUPABASE ===
+
+1. users
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - email (varchar)
+   - password (varchar)
+   - role (text) ['user', 'admin']
+   - phone_number (int8)
+
+2. athlete
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - name (varchar)
+   - last_name (varchar)
+   - birthdate (date)
+   - height (int2)
+   - weight (int2)
+   - location_id (int8, FK → location.id)
+   - user_id (int8, FK → users.id)
+   - sport_id (int8, FK → sport.id)
+
+3. agent
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - name (varchar)
+   - last_name (varchar)
+   - description (varchar)
+   - user_id (int8, FK → users.id)
+   - location_id (int8, FK → location.id)
+   - sport_id (int8, FK → sport.id)
+
+4. team
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - name (varchar)
+   - job (varchar)
+   - description (varchar)
+   - user_id (int8, FK → users.id)
+   - sport_id (int8, FK → sport.id)
+   - location_id (int8, FK → location.id)
+
+5. plan (Para planes premium futuros)
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - name (varchar)
+   - price (int8)
+   Nota: Esta tabla se utilizará en el futuro para definir los diferentes
+   planes premium disponibles.
+
+6. subscription (Para planes premium futuros)
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - end_date (date)
+   - user_id (int8, FK → users.id)
+   - plan_id (int8, FK → plan.id)
+   Nota: Esta tabla se utilizará en el futuro para gestionar suscripciones premium.
+   Por defecto los usuarios no necesitan una suscripción para usar la plataforma.
+
+7. match_state
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - state (varchar)
+
+8. match
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - match_state_id (int8, FK → match_state.id)
+   - user1_id (int8, FK → users.id)
+   - user2_id (int8, FK → users.id)
+
+9. chat
+   - id (int8, PK)
+   - created_at (timestamptz)
+   - match_id (int8, FK → match.id)
+
+10. post
+    - id (int8, PK)
+    - created_at (timestamptz)
+    - text (text)
+    - url (varchar)
+    - user_id (int8, FK → users.id)
+
+11. sport
+    - id (int8, PK)
+    - created_at (timestamptz)
+    - name (varchar)
+    - position (varchar)
+
+12. location
+    - id (int8, PK)
+    - created_at (timestamptz)
+    - country (varchar)
+    - province (varchar)
+    - city (varchar)
+
+=== SEGURIDAD IMPLEMENTADA ===
+
+1. Autenticación:
+   - JWT para manejo de sesiones
+   - Bcrypt para hash de contraseñas
+   - Google OAuth como alternativa de login
+
+2. Autorización:
+   - Middleware de verificación de token
+   - Middleware de verificación de rol admin
+   - Middleware de verificación de acceso a recursos
+
+3. Seguridad HTTP:
+   - CORS configurado
+   - Headers de seguridad básicos
+   - Manejo de errores global
+
+=== NOTAS ADICIONALES ===
+
+- El proyecto usa el esquema 'public' de Supabase
+- Los roles son 'user' y 'admin'
+- athlete, agent y team son tipos de perfil para usuarios normales
+- El manejo de permisos se hace principalmente desde el backend
+- Incluye manejo de errores centralizado
+- Preparado para desarrollo y producción
