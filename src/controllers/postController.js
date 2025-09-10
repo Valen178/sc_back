@@ -30,7 +30,7 @@ const getPost = async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
-      .from('posts')
+      .from('post')
       .select(`
         *,
         user:user_id (
@@ -59,7 +59,7 @@ const deletePost = async (req, res) => {
     const { id } = req.params;
 
     const { error } = await supabase
-      .from('posts')
+      .from('post')
       .delete()
       .eq('id', id);
 

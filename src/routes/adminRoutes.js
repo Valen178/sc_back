@@ -10,24 +10,14 @@ const {
 
 const router = express.Router();
 
-const express = require('express');
-const { verifyToken, isAdmin } = require('../middleware/auth');
-const { 
-  getAllUsers, 
-  getUser,
-  updateUser, 
-  deleteUser,
-  changeUserRole
-} = require('../controllers/adminController');
-
 const {
   getAllSubscriptions,
   getSubscription,
   updateSubscription,
   deleteSubscription,
   getAllPlans,
-  getPlan,
-  createPlan
+  createPlan,
+  deletePlan
 } = require('../controllers/subscriptionController');
 
 const {
@@ -64,8 +54,8 @@ router.patch('/users/:id/role', changeUserRole);
 
 // === PLANES Y SUSCRIPCIONES ===
 router.get('/plans', getAllPlans);
-router.get('/plans/:id', getPlan);
 router.post('/plans', createPlan);
+router.delete('/plans/:id', deletePlan);
 
 router.get('/subscriptions', getAllSubscriptions);
 router.get('/subscriptions/:id', getSubscription);
