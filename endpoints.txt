@@ -1,6 +1,51 @@
 === ENDPOINTS DE LA API ===
 
 BASE URL: http://localhost:3000
+
+=== GESTIÓN DE PUBLICACIONES ===
+
+1. Crear Nueva Publicación
+   POST /posts
+   Headers: {
+     "Authorization": "Bearer <token>"
+   }
+   Body: {
+     "text": string,      // Opcional si se proporciona URL
+     "url": string       // Opcional si se proporciona texto
+   }
+
+2. Obtener Todas las Publicaciones
+   GET /posts
+   Query Parameters:
+     - page: número de página (default: 1)
+     - limit: número de posts por página (default: 10)
+   Response: {
+     "message": "Posts retrieved successfully",
+     "data": {
+       "posts": [...],
+       "pagination": {
+         "current_page": number,
+         "total_pages": number,
+         "total_posts": number,
+         "posts_per_page": number
+       }
+     }
+   }
+
+3. Obtener Publicaciones de Usuario Específico
+   GET /posts/user/:userId
+   Query Parameters:
+     - page: número de página (default: 1)
+     - limit: número de posts por página (default: 10)
+
+4. Eliminar Publicación
+   DELETE /posts/:postId
+   Headers: {
+     "Authorization": "Bearer <token>"
+   }
+   Notas: 
+   - Solo el propietario o un admin puede eliminar la publicación
+   - Se requiere autenticación
 Versión: 1.0.0
 Última actualización: 09/09/2025
 
@@ -257,6 +302,11 @@ Versión: 1.0.0
        "sport_id": number,
        "location_id": number
    }
+
+   POST /api/swipe - Dar like/dislike
+   GET /api/swipe/discover?profile_type_filter=team&limit=10 - Obtener usuarios
+   GET /api/swipe/matches - Ver matches
+   GET /api/swipe/stats - Estadísticas
 
 === NOTAS ===
 

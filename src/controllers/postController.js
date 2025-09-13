@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getUser } = require('./adminController');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
@@ -71,8 +72,46 @@ const deletePost = async (req, res) => {
   }
 };
 
+const createPost = async (req, res) => {
+  try {
+    const { text, url } = req.body;
+    const userId = req.user.id;
+    const { data, error } = await supabase
+      .from('post')
+      .insert([ { text, url, user_id: userId } ])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ message: 'Post created successfully', post: data });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  } 
+};
+
+// Obtener publicaciones del usuario autenticado
+const getUserPosts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { data, error } = await supabase
+      .from('post')
+      .select('*')  
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({message: 'User posts retrieved successfully', post: data });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  } 
+};
+
 module.exports = {
+  createPost, 
   getAllPosts,
   getPost,
-  deletePost
+  deletePost,
+  getUserPosts
 };

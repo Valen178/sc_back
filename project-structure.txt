@@ -1,8 +1,24 @@
 === DOCUMENTACIÓN DEL PROYECTO ===
 
 📁 back/
-├── 📄 .env
-│   └── Variables de entorno:
+├──   │   ├── 📄 lookupController.js
+   │   │   └── Funciones:
+   │   │       - getAllSports
+   │   │       - getAllLocations
+   │   │       - getLocationsByCountry
+   │   │       - getSportWithPositions
+   │   │
+   │   ├── 📄 postController.js
+   │   │   └── Funciones:
+   │   │       - createPost (crear nueva publicación)
+   │   │       - getAllPosts (listar todas las publicaciones con paginación)
+   │   │       - getUserPosts (obtener publicaciones de un usuario específico)
+   │   │       - deletePost (eliminar una publicación)
+   │   │
+   │   └── 📄 profileController.js
+   │       └── Funciones:
+   │           - getMyProfile
+   │           - updateProfile   └── Variables de entorno:
 │       - SUPABASE_URL
 │       - SUPABASE_ANON_KEY
 │       - PORT

@@ -45,13 +45,6 @@ const {
 // Todas las rutas requieren autenticación y rol de admin
 router.use(verifyToken, isAdmin);
 
-// === USUARIOS ===
-router.get('/users', getAllUsers);
-router.get('/users/:id', getUser);
-router.put('/users/:id', updateUser);
-router.delete('/users/:id', deleteUser);
-router.patch('/users/:id/role', changeUserRole);
-
 // === PLANES Y SUSCRIPCIONES ===
 router.get('/plans', getAllPlans);
 router.post('/plans', createPlan);

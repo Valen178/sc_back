@@ -6,6 +6,8 @@ const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const lookupRoutes = require('./src/routes/lookupRoutes');
 const profileRoutes = require('./src/routes/profileRoutes');
+const postRoutes = require('./src/routes/postRoutes');
+const swipeRoutes = require('./src/routes/swipeRoutes');
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/lookup', lookupRoutes);
 app.use('/profile', profileRoutes);
+app.use('/posts', postRoutes);
+app.use('/swipe', swipeRoutes);
 
 // Test route
 app.get('/', (req, res) => {
