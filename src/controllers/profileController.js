@@ -92,11 +92,11 @@ const updateProfile = async (req, res) => {
             .from('users')
             .update(userUpdates)
             .eq('id', userId)
-            .select('id, email, phone_number, role')
+            .select('id, email, role')
             .single()
         : supabase
             .from('users')
-            .select('id, email, phone_number, role')
+            .select('id, email, role')
             .eq('id', userId)
             .single()
     ]);
@@ -124,7 +124,7 @@ const getMyProfile = async (req, res) => {
       getProfileByUserId(userId),
       supabase
         .from('users')
-        .select('id, email, phone_number, role')
+        .select('id, email, role')
         .eq('id', userId)
         .single()
     ]);

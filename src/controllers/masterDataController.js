@@ -44,15 +44,14 @@ const getSport = async (req, res) => {
 // Crear un deporte
 const createSport = async (req, res) => {
   try {
-    const { name, position } = req.body;
+    const { name } = req.body;
 
     // Validar campos requeridos
-    if (!name || !position) {
+    if (!name) {
       return res.status(400).json({ 
-        message: 'Name and position are required',
+        message: 'Name is required',
         missingFields: [
-          !name && 'name',
-          !position && 'position'
+          !name && 'name'
         ].filter(Boolean)
       });
     }
@@ -61,7 +60,6 @@ const createSport = async (req, res) => {
       .from('sport')
       .insert([{
         name,
-        position
       }])
       .select()
       .single();
@@ -83,11 +81,11 @@ const createSport = async (req, res) => {
 const updateSport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, position } = req.body;
+    const { name,  } = req.body;
 
     const { data, error } = await supabase
       .from('sport')
-      .update({ name, position })
+      .update({ name })
       .eq('id', id)
       .select()
       .single();

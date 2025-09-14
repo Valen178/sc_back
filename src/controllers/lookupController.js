@@ -61,26 +61,8 @@ const getLocationsByCountry = async (req, res) => {
   }
 };
 
-// Obtener deportes con sus posiciones
-const getSportWithPositions = async (req, res) => {
-  try {
-    const { sportId } = req.params;
-    const { data, error } = await supabase
-      .from('sport')
-      .select('*')
-      .eq('id', sportId);
-
-    if (error) throw error;
-
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 module.exports = {
   getAllSports,
   getAllLocations,
-  getLocationsByCountry,
-  getSportWithPositions
+  getLocationsByCountry
 };

@@ -45,56 +45,6 @@ Versión: 1.0.0
 
 4. Configurar Base de Datos:
    a) Crear proyecto en Supabase (https://supabase.com)
-   b) Crear las siguientes tablas en el esquema 'public':
-
-   ```sql
-   -- Tabla users
-   CREATE TABLE users (
-     id BIGSERIAL PRIMARY KEY,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     email VARCHAR NOT NULL UNIQUE,
-     password VARCHAR NOT NULL,
-     role TEXT DEFAULT 'user',
-     phone_number BIGINT
-   );
-
-   -- Tabla athlete
-   CREATE TABLE athlete (
-     id BIGSERIAL PRIMARY KEY,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     name VARCHAR NOT NULL,
-     last_name VARCHAR NOT NULL,
-     birthdate DATE,
-     height SMALLINT,
-     weight SMALLINT,
-     location_id BIGINT,
-     user_id BIGINT REFERENCES users(id),
-     sport_id BIGINT
-   );
-
-   -- Tabla agent
-   CREATE TABLE agent (
-     id BIGSERIAL PRIMARY KEY,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     name VARCHAR NOT NULL,
-     last_name VARCHAR NOT NULL,
-     description VARCHAR,
-     user_id BIGINT REFERENCES users(id),
-     location_id BIGINT
-   );
-
-   -- Tabla team
-   CREATE TABLE team (
-     id BIGSERIAL PRIMARY KEY,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     name VARCHAR NOT NULL,
-     job VARCHAR,
-     description VARCHAR,
-     user_id BIGINT REFERENCES users(id),
-     sport_id BIGINT,
-     location_id BIGINT
-   );
-   ```
 
 5. Configurar Google OAuth (opcional):
    - Ir a Google Cloud Console (https://console.cloud.google.com)
@@ -128,8 +78,7 @@ Versión: 1.0.0
    Body:
    {
      "email": "test@example.com",
-     "password": "password123",
-     "phone_number": 1234567890
+     "password": "password123"
    }
    ```
 
@@ -169,7 +118,11 @@ Versión: 1.0.0
      "height": 180,
      "weight": 75,
      "location_id": 1,
-     "sport_id": 1
+     "sport_id": 1,
+     "phone_number": 1234567890,
+     "ig_user": "john_doe",      // opcional
+     "x_user": "johndoe",         // opcional
+     "description": "Athlete from XYZ"     // opcional
    }
    ```
 
@@ -185,7 +138,11 @@ Versión: 1.0.0
      "last_name": "Smith",
      "description": "Experienced sports agent",
      "location_id": 1,
-     "sport_id": 1
+     "sport_id": 1,
+     "phone_number": 9876543210,
+     "ig_user": "jane_smith",      // opcional
+     "x_user": "janesmith",         // opcional
+     "agency": "Sports Agency"     // opcional
    }
    ```
 
@@ -201,7 +158,10 @@ Versión: 1.0.0
      "job": "Head Scout",
      "description": "Premier league team",
      "sport_id": 1,
-     "location_id": 1
+     "location_id": 1,
+     "phone_number": 5551234567,
+     "ig_user": "city_fc",      // opcional
+     "x_user": "cityfootballclub"         // opcional
    }
    ```
 
@@ -222,8 +182,7 @@ Versión: 1.0.0
    Body:
    {
      "userUpdates": {
-       "email": "updated@example.com",
-       "phone_number": 9876543210
+       "email": "updated@example.com"
      },
      "profileUpdates": {
        // Campos según tipo de perfil
@@ -269,8 +228,7 @@ Versión: 1.0.0
       Authorization: Bearer {{TOKEN}}
       Body:
       {
-        "email": "updated@example.com",
-        "phone_number": 9876543210
+        "email": "updated@example.com"
       }
       ```
 
@@ -308,7 +266,6 @@ Versión: 1.0.0
       Body:
       {
         "name": "Football",
-        "position": "Forward"
       }
       ```
 
@@ -320,7 +277,6 @@ Versión: 1.0.0
       Body:
       {
         "name": "Soccer",
-        "position": "Striker"
       }
       ```
 
@@ -433,7 +389,6 @@ Versión: 1.0.0
    A. Deportes:
    ```
    GET {{BASE_URL}}/lookup/sports
-   GET {{BASE_URL}}/lookup/sports/:sportId/positions
    ```
 
    B. Ubicaciones:

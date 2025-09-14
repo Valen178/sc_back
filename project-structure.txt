@@ -6,7 +6,6 @@
    │   │       - getAllSports
    │   │       - getAllLocations
    │   │       - getLocationsByCountry
-   │   │       - getSportWithPositions
    │   │
    │   ├── 📄 postController.js
    │   │   └── Funciones:
@@ -70,7 +69,6 @@
 │   │   │       - getAllSports
 │   │   │       - getAllLocations
 │   │   │       - getLocationsByCountry
-│   │   │       - getSportWithPositions
 │   │   │
 │   │   └── 📄 profileController.js
 │   │       └── Funciones:
@@ -103,7 +101,6 @@
 │               - /sports
 │               - /locations
 │               - /locations/country/:country
-│               - /sports/:sportId/positions
 
 === DEPENDENCIAS ===
 
@@ -127,7 +124,6 @@ Desarrollo:
    - email (varchar)
    - password (varchar)
    - role (text) ['user', 'admin']
-   - phone_number (int8)
 
 2. athlete
    - id (int8, PK)
@@ -140,6 +136,10 @@ Desarrollo:
    - location_id (int8, FK → location.id)
    - user_id (int8, FK → users.id)
    - sport_id (int8, FK → sport.id)
+   - phone_number (text)
+   - ig_user (text)
+   - x_user (text)
+   - description (text)
 
 3. agent
    - id (int8, PK)
@@ -150,6 +150,10 @@ Desarrollo:
    - user_id (int8, FK → users.id)
    - location_id (int8, FK → location.id)
    - sport_id (int8, FK → sport.id)
+   - phone_number (text)
+   - ig_user (text)
+   - x_user (text)
+   - agency (text)
 
 4. team
    - id (int8, PK)
@@ -160,28 +164,27 @@ Desarrollo:
    - user_id (int8, FK → users.id)
    - sport_id (int8, FK → sport.id)
    - location_id (int8, FK → location.id)
+   - phone_number (text)
+   - ig_user (text)
+   - x_user (text)
 
-5. plan (Para planes premium futuros)
+5. plan 
    - id (int8, PK)
    - created_at (timestamptz)
    - name (varchar)
    - price (int8)
-   Nota: Esta tabla se utilizará en el futuro para definir los diferentes
-   planes premium disponibles.
 
-6. subscription (Para planes premium futuros)
+6. subscription 
    - id (int8, PK)
    - created_at (timestamptz)
    - end_date (date)
    - user_id (int8, FK → users.id)
    - plan_id (int8, FK → plan.id)
-   Nota: Esta tabla se utilizará en el futuro para gestionar suscripciones premium.
-   Por defecto los usuarios no necesitan una suscripción para usar la plataforma.
 
 7. match_state
    - id (int8, PK)
    - created_at (timestamptz)
-   - state (varchar)
+   - state (varchar) ('active', 'expired', 'blocked')
 
 8. match
    - id (int8, PK)
@@ -206,7 +209,6 @@ Desarrollo:
     - id (int8, PK)
     - created_at (timestamptz)
     - name (varchar)
-    - position (varchar)
 
 12. location
     - id (int8, PK)
@@ -214,6 +216,13 @@ Desarrollo:
     - country (varchar)
     - province (varchar)
     - city (varchar)
+
+13. swipes
+      - id (int8, PK)
+      - created_at (timestamptz)
+      - swiper_user_id (int8, FK → users.id)
+      - swiped_user_id (int8, FK → users.id)
+      - action (varchar) ('like', 'dislike')
 
 === SEGURIDAD IMPLEMENTADA ===
 

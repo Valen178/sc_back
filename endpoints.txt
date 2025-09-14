@@ -73,8 +73,7 @@ Versión: 1.0.0
    Body: {
      "email": string,
      "password": string,
-     "role": "user", // por defecto
-     "phone_number": number
+     "role": "user" // por defecto
    }
 
 2. Inicio de Sesión
@@ -103,7 +102,11 @@ Versión: 1.0.0
      "height": number,
      "weight": number,
      "location_id": number,
-     "sport_id": number
+     "sport_id": number, 
+     "phone_number": string,
+     "ig_user": string,      // opcional
+     "x_user": string,        // opcional
+     "description": string     // opcional
    }
    // O
    Body: {
@@ -111,7 +114,11 @@ Versión: 1.0.0
      "name": string,
      "last_name": string,
      "description": string,
-     "location_id": number
+     "location_id": number,
+     "phone_number": string,
+     "ig_user": string,      // opcional
+     "x_user": string,        // opcional
+     "agency": string         // opcional
    }
    // O
    Body: {
@@ -120,7 +127,10 @@ Versión: 1.0.0
      "job": string,
      "description": string,
      "sport_id": number,
-     "location_id": number
+     "location_id": number,
+     "phone_number": string,
+     "ig_user": string,      // opcional
+     "x_user": string        // opcional
    }
 
 === PANEL DE ADMINISTRADOR ===
@@ -139,8 +149,6 @@ Versión: 1.0.0
    Body: {
      "email": string,
      "password": string,
-     "role": "user" | "admin",
-     "phone_number": number
    }
 
 4. Actualizar Usuario
@@ -248,9 +256,6 @@ Versión: 1.0.0
 3. Obtener Ubicaciones por País
    GET /lookup/locations/country/:country
 
-4. Obtener Posiciones por Deporte
-   GET /lookup/sports/:sportId/positions
-
 === PERFIL DE USUARIO ===
 (Todos requieren header: "Authorization": "Bearer <token>")
 
@@ -259,8 +264,7 @@ Versión: 1.0.0
    Response: {
      "user": {
        "id": number,
-       "email": string,
-       "phone_number": number,
+       "mail": string,
        "role": string
      },
      "profileType": "athlete" | "agent" | "team",
@@ -274,8 +278,7 @@ Versión: 1.0.0
    Body: {
      "userUpdates": {
        "email": string,      // opcional
-       "password": string,   // opcional
-       "phone_number": number // opcional
+       "password": string   // opcional
      },
      "profileUpdates": {
        // Para perfil de atleta
@@ -285,14 +288,22 @@ Versión: 1.0.0
        "height": number,
        "weight": number,
        "location_id": number,
-       "sport_id": number
+       "sport_id": number,
+       "phone_number": string,
+       "ig_user": string,      // opcional
+       "x_user": string,        // opcional
+       "description": string,   // opcional
      }
      // O para perfil de agente
      "profileUpdates": {
        "name": string,
        "last_name": string,
        "description": string,
-       "location_id": number
+       "location_id": number,
+       "phone_number": string,
+       "ig_user": string,      // opcional
+       "x_user": string,        // opcional
+       "agency": string         // opcional
      }
      // O para perfil de equipo
      "profileUpdates": {
@@ -300,7 +311,10 @@ Versión: 1.0.0
        "job": string,
        "description": string,
        "sport_id": number,
-       "location_id": number
+       "location_id": number,
+       "phone_number": string,
+       "ig_user": string,      // opcional
+       "x_user": string        // opcional
    }
 
    POST /api/swipe - Dar like/dislike

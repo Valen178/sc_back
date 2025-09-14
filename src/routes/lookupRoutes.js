@@ -3,7 +3,6 @@ const {
   getAllSports,
   getAllLocations,
   getLocationsByCountry,
-  getSportWithPositions
 } = require('../controllers/lookupController');
 
 const router = express.Router();
@@ -12,6 +11,5 @@ const router = express.Router();
 router.get('/sports', getAllSports);
 router.get('/locations', getAllLocations);
 router.get('/locations/country/:country', getLocationsByCountry);
-router.get('/sports/:sportId/positions', getSportWithPositions);
 
 module.exports = router;

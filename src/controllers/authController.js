@@ -16,7 +16,7 @@ const generateToken = (user) => {
 
 const signup = async (req, res) => {
   try {
-    const { email, password, phone_number } = req.body;
+    const { email, password } = req.body;
 
     // Verificar si el usuario ya existe
     const { data: existingUser } = await supabase
@@ -39,8 +39,7 @@ const signup = async (req, res) => {
         {
           email,
           password: hashedPassword,
-          role: 'user', // siempre será 'user' por defecto
-          phone_number
+          role: 'user' // siempre será 'user' por defecto
         }
       ])
       .select()
@@ -75,21 +74,32 @@ const getProfileRequirements = (profileType) => {
       'height',
       'weight',
       'location_id',
-      'sport_id'
+      'sport_id', 
+      'phone_number',
+      'ig_user',
+      'x_user',
+      'description'
     ],
     agent: [
       'name',
       'last_name',
       'description',
       'location_id',
-      'sport_id'
+      'sport_id',
+      'phone_number',
+      'ig_user',
+      'x_user',
+      'agency'
     ],
     team: [
       'name',
       'job',
       'description',
       'sport_id',
-      'location_id'
+      'location_id',
+      'phone_number',
+      'ig_user',
+      'x_user'
     ]
   };
 
@@ -245,8 +255,7 @@ const googleLogin = async (req, res) => {
           {
             email,
             password: null, // Usuario de Google no tiene contraseña
-            role: 'user', // Role será 'user' por defecto
-            phone_number: null // Se puede actualizar después si es necesario
+            role: 'user' // Role será 'user' por defecto
           }
         ])
         .select()
