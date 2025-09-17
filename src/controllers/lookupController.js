@@ -5,25 +5,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 // Obtener todos los deportes
 const getAllSports = async (req, res) => {
   try {
-    const { data: sports, error } = await supabase
+    const { data, error } = await supabase
       .from('sport')
       .select('*')
       .order('name');
 
     if (error) throw error;
 
-    // Obtener la cantidad de usuarios por deporte
-    const { data: usersCount } = await supabase
-      .from('athlete')
-      .select('sport_id, count(*)')
-      .group('sport_id');
-
-    const sportsWithCounts = sports.map(sport => ({
-      ...sport,
-      athleteCount: usersCount.find(count => count.sport_id === sport.id)?.count || 0
-    }));
-
-    res.json(sportsWithCounts);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
