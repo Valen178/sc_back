@@ -66,6 +66,15 @@ const createSwipe = async (req, res) => {
   }
 
   try {
+    // Verificar que ambos usuarios pertenezcan al mismo deporte
+    const swiperProfile = await getUserProfileType(swiper_user_id);
+    const swipedProfile = await getUserProfileType(swiped_user_id);
+
+    if (swiperProfile.profile.sport_id !== swipedProfile.profile.sport_id) {
+      return res.status(400).json({ 
+        error: 'Solo puedes interactuar con usuarios del mismo deporte' 
+      });
+    }
     // 1. Verificar que no haya interacción previa
     const { data: existingSwipe } = await supabase
       .from('swipes')
@@ -151,6 +160,7 @@ const getDiscoverUsers = async (req, res) => {
   try {
     // 1. Obtener el tipo de perfil del usuario actual
     const userProfile = await getUserProfileType(user_id);
+    const userSportId = userProfile.profile.sport_id;
     
     // 2. Definir qué tipos puede ver según las reglas
     let allowedTypes = [];
@@ -160,7 +170,7 @@ const getDiscoverUsers = async (req, res) => {
       } else if (profile_type_filter === 'agent') {
         allowedTypes = ['agent'];
       } else {
-        allowedTypes = ['team', 'agent']; // ambos o sin filtro
+        allowedTypes = ['team', 'agent']; // both o sin filtro
       }
     } else if (userProfile.type === 'team' || userProfile.type === 'agent') {
       allowedTypes = ['athlete'];
@@ -186,7 +196,8 @@ const getDiscoverUsers = async (req, res) => {
           sport:sport(name),
           location:location(country, province, city)
         `)
-        .not('user_id', 'eq', user_id);
+        .not('user_id', 'eq', user_id)
+        .eq('sport_id', userSportId); // FILTRO OBLIGATORIO POR DEPORTE
 
       // Excluir usuarios ya vistos
       if (swipedUserIds.length > 0) {
@@ -214,6 +225,7 @@ const getDiscoverUsers = async (req, res) => {
       success: true,
       users: limitedUsers,
       user_profile_type: userProfile.type,
+      user_sport_id: userSportId,
       count: limitedUsers.length
     });
 
