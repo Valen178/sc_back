@@ -192,7 +192,7 @@ const getDiscoverUsers = async (req, res) => {
         .from(profileType)
         .select(`
           *,
-          user:users!${profileType}_user_id_fkey(id, created_at),
+          user:user_id(id, created_at),
           sport:sport(name),
           location:location(country, province, city)
         `)

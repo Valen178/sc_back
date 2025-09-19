@@ -17,12 +17,12 @@ router.post('/', createSwipe);
 
 // GET /api/swipe/discover - Obtener usuarios para descubrir
 // Query params: profile_type_filter (team|agent|both), limit (default: 10)
-router.get('/swipe/discover', getDiscoverUsers);
+router.get('/discover', getDiscoverUsers);
 
 // GET /api/swipe/matches - Obtener todos los matches del usuario
-router.get('/swipe/matches', getUserMatches);
+router.get('/matches', getUserMatches);
 
 // GET /api/swipe/stats - Obtener estadísticas de swipes del usuario
-router.get('/swipe/stats', getSwipeStats);
+router.get('/stats', getSwipeStats);
 
 module.exports = router;

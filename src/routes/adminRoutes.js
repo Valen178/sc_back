@@ -73,7 +73,6 @@ router.get('/locations/:id', getLocation);
 router.post('/locations', createLocation);
 router.put('/locations/:id', updateLocation);
 router.delete('/locations/:id', deleteLocation);
-router.use(verifyToken, isAdmin);
 
 // Rutas de administración de usuarios
 router.get('/users', getAllUsers);

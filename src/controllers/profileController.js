@@ -45,11 +45,11 @@ const updateProfile = async (req, res) => {
     }
 
     // Validar que location_id existe si se está actualizando
-    if (updates.location_id) {
+    if (profileUpdates.location_id) {
       const { data: location } = await supabase
         .from('location')
         .select('id')
-        .eq('id', updates.location_id)
+        .eq('id', profileUpdates.location_id)
         .single();
 
       if (!location) {
@@ -60,11 +60,11 @@ const updateProfile = async (req, res) => {
     }
 
     // Validar que sport_id existe si se está actualizando
-    if (updates.sport_id) {
+    if (profileUpdates.sport_id) {
       const { data: sport } = await supabase
         .from('sport')
         .select('id')
-        .eq('id', updates.sport_id)
+        .eq('id', profileUpdates.sport_id)
         .single();
 
       if (!sport) {

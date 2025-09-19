@@ -24,7 +24,7 @@ const uploadProfilePhoto = async (req, res) => {
         const { error: uploadError } = await supabase
             .storage
             .from('profile_photos')
-            .upload(`profile_photos/${fileName}`, file.buffer, {
+            .upload(fileName, file.buffer, {
                 contentType: file.mimetype,
                 upsert: true
             });
@@ -35,7 +35,7 @@ const uploadProfilePhoto = async (req, res) => {
         const { data: { publicUrl } } = supabase
             .storage
             .from('profile_photos')
-            .getPublicUrl(`profile_photos/${fileName}`);
+            .getPublicUrl(fileName);
 
         // Update profile with new photo URL
         const { error: updateError } = await supabase

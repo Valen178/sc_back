@@ -13,39 +13,47 @@ BASE URL: http://localhost:3000
      "text": string,      // Opcional si se proporciona URL
      "url": string       // Opcional si se proporciona texto
    }
+   Response: {
+     "message": "Post created successfully",
+     "post": { ... }
+   }
 
 2. Obtener Todas las Publicaciones
    GET /posts
-   Query Parameters:
-     - page: número de página (default: 1)
-     - limit: número de posts por página (default: 10)
-   Response: {
-     "message": "Posts retrieved successfully",
-     "data": {
-       "posts": [...],
-       "pagination": {
-         "current_page": number,
-         "total_pages": number,
-         "total_posts": number,
-         "posts_per_page": number
+   Response: [
+     {
+       "id": number,
+       "text": string,
+       "url": string,
+       "user_id": number,
+       "created_at": timestamp,
+       "user": {
+         "id": number,
+         "email": string,
+         "role": string
        }
      }
-   }
+   ]
 
 3. Obtener Publicaciones de Usuario Específico
    GET /posts/user/:userId
-   Query Parameters:
-     - page: número de página (default: 1)
-     - limit: número de posts por página (default: 10)
+   Response: {
+     "message": "User posts retrieved successfully",
+     "post": [ ... ]
+   }
 
 4. Eliminar Publicación
    DELETE /posts/:postId
    Headers: {
      "Authorization": "Bearer <token>"
    }
+   Response: {
+     "message": "Post deleted successfully"
+   }
    Notas: 
    - Solo el propietario o un admin puede eliminar la publicación
    - Se requiere autenticación
+
 Versión: 1.0.0
 Última actualización: 09/09/2025
 
@@ -317,15 +325,149 @@ Versión: 1.0.0
        "x_user": string        // opcional
    }
 
-   POST /api/swipe - Dar like/dislike
-   GET /api/swipe/discover?profile_type_filter=team&limit=10 - Obtener usuarios
-   GET /api/swipe/matches - Ver matches
-   GET /api/swipe/stats - Estadísticas
+=== FUNCIONALIDADES DE SWIPE Y MATCHES ===
+(Todos requieren header: "Authorization": "Bearer <token>")
+
+1. Dar Like/Dislike a Usuario
+   POST /swipe
+   Body: {
+     "swiped_user_id": number,
+     "action": "like" | "dislike"
+   }
+   Response: {
+     "success": true,
+     "match": boolean,
+     "message": string
+   }
+   Notas:
+   - Solo se puede interactuar con usuarios del mismo deporte
+   - No se puede dar like/dislike a uno mismo
+   - Si ambos usuarios se dan like, se crea un match automáticamente
+
+2. Obtener Usuarios para Descubrir
+   GET /swipe/discover
+   Query Parameters:
+     - profile_type_filter: "team" | "agent" | "both" (opcional)
+     - limit: número máximo de usuarios (default: 10)
+   Response: {
+     "success": true,
+     "users": [...],
+     "user_profile_type": string,
+     "user_sport_id": number,
+     "count": number
+   }
+   Notas:
+   - Los atletas pueden ver equipos y agentes
+   - Los equipos y agentes pueden ver atletas
+   - Solo muestra usuarios del mismo deporte
+   - Excluye usuarios ya vistos
+
+3. Obtener Matches del Usuario
+   GET /swipe/matches
+   Response: {
+     "success": true,
+     "matches": [
+       {
+         "match_id": number,
+         "created_at": timestamp,
+         "other_user": {
+           "id": number,
+           "profile_type": string,
+           "profile": { ... }
+         }
+       }
+     ],
+     "count": number
+   }
+
+4. Obtener Estadísticas de Swipes
+   GET /swipe/stats
+   Response: {
+     "success": true,
+     "stats": {
+       "sent": {
+         "total": number,
+         "likes": number,
+         "dislikes": number
+       },
+       "received": {
+         "total": number,
+         "likes": number,
+         "dislikes": number
+       },
+       "matches": number
+     }
+   }
+
+=== GESTIÓN DE FOTOS DE PERFIL ===
+(Todos requieren header: "Authorization": "Bearer <token>")
+
+1. Subir Foto de Perfil
+   POST /profile-photo/upload
+   Content-Type: multipart/form-data
+   Body (form-data):
+     - photo: archivo de imagen (máx. 5MB)
+     - profileType: "athlete" | "agent" | "team"
+   Response: {
+     "message": "Profile photo updated successfully",
+     "photo_url": string
+   }
+   Notas:
+   - Solo acepta archivos de imagen
+   - Tamaño máximo: 5MB
+   - Reemplaza la foto anterior automáticamente
+
+2. Eliminar Foto de Perfil
+   DELETE /profile-photo/delete
+   Content-Type: application/json
+   Body: {
+     "profileType": "athlete" | "agent" | "team"
+   }
+   Response: {
+     "message": "Profile photo deleted successfully"
+   }
+   Notas:
+   - Elimina la foto del storage
+   - Establece photo_url en null
+
+=== GESTIÓN DE PLANES Y SUSCRIPCIONES (ADMIN) ===
+(Todos requieren header: "Authorization": "Bearer <token>" y rol de admin)
+
+1. Obtener Todos los Planes
+   GET /admin/plans
+
+2. Crear Plan
+   POST /admin/plans
+   Body: {
+     "name": string,
+     "price": number
+   }
+
+3. Eliminar Plan
+   DELETE /admin/plans/:id
+
+4. Obtener Todas las Suscripciones
+   GET /admin/subscriptions
+
+5. Obtener Suscripción Específica
+   GET /admin/subscriptions/:id
+
+6. Actualizar Suscripción
+   PUT /admin/subscriptions/:id
+   Body: {
+     "end_date": date
+   }
+
+7. Eliminar Suscripción
+   DELETE /admin/subscriptions/:id
 
 === NOTAS ===
 
 - Todos los endpoints de administrador requieren autenticación y rol de admin
 - Los endpoints de perfil y completar perfil requieren autenticación
 - Los endpoints de lookup son públicos y no requieren autenticación
+- Los endpoints de swipe requieren autenticación y perfil completo
 - Las respuestas incluyen mensajes de error descriptivos en caso de fallos
 - Todos los endpoints devuelven respuestas en formato JSON
+- Las fotos de perfil se almacenan en Supabase Storage
+- Los matches se crean automáticamente cuando dos usuarios se dan like mutuamente
