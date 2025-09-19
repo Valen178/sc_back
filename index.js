@@ -8,6 +8,7 @@ const lookupRoutes = require('./src/routes/lookupRoutes');
 const profileRoutes = require('./src/routes/profileRoutes');
 const postRoutes = require('./src/routes/postRoutes');
 const swipeRoutes = require('./src/routes/swipeRoutes');
+const profilePhotoRoutes = require('./src/routes/profilePhotoRoutes');
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/lookup', lookupRoutes);
 app.use('/profile', profileRoutes);
 app.use('/posts', postRoutes);
 app.use('/swipe', swipeRoutes);
+app.use('/profile-photo', profilePhotoRoutes);
 
 // Test route
 app.get('/', (req, res) => {
