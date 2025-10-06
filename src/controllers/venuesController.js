@@ -1,6 +1,8 @@
-const supabase = require('../config/supabase');
+const { createClient } = require('@supabase/supabase-js');
 const { Client } = require('@googlemaps/google-maps-services-js');
 const client = new Client({});
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const getNearbyVenues = async (req, res) => {
     try {
