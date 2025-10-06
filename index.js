@@ -9,6 +9,7 @@ const profileRoutes = require('./src/routes/profileRoutes');
 const postRoutes = require('./src/routes/postRoutes');
 const swipeRoutes = require('./src/routes/swipeRoutes');
 const profilePhotoRoutes = require('./src/routes/profilePhotoRoutes');
+const venuesRoutes = require('./src/routes/venuesRoutes');
 
 const app = express();
 
