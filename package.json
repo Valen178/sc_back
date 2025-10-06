@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "Backend API with Express and Supabase",
   "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.2",
     "@supabase/supabase-js": "^2.57.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",

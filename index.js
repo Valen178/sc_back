@@ -39,6 +39,7 @@ app.use('/admin', adminRoutes);
 app.use('/lookup', lookupRoutes);
 app.use('/profile', profileRoutes);
 app.use('/posts', postRoutes);
+app.use('/venues', venuesRoutes);
 app.use('/swipe', swipeRoutes);
 app.use('/profile-photo', profilePhotoRoutes);
 
