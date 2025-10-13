@@ -1,2 +1,6 @@
 node_modules
 .env
+endpoints.txt
+env-instructions.txt
+project-structure.txt
+testing-guide.txt
