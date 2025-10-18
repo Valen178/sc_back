@@ -3,11 +3,8 @@ const router = express.Router();
 const {
   createSwipe,
   getDiscoverUsers,
-  getUserMatches,
-  getSwipeStats
+  getUserMatches
 } = require('../controllers/swipeController');
-
-// Middleware de autenticación
 const { verifyToken } = require('../middleware/auth');
 
 router.use(verifyToken);
@@ -21,8 +18,5 @@ router.get('/discover', getDiscoverUsers);
 
 // GET /api/swipe/matches - Obtener todos los matches del usuario
 router.get('/matches', getUserMatches);
-
-// GET /api/swipe/stats - Obtener estadísticas de swipes del usuario
-router.get('/stats', getSwipeStats);
 
 module.exports = router;

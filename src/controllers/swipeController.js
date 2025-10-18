@@ -312,66 +312,8 @@ const getUserMatches = async (req, res) => {
   }
 };
 
-// Obtener estadísticas de swipes del usuario
-const getSwipeStats = async (req, res) => {
-  const user_id = req.user.id;
-
-  try {
-    // Swipes enviados
-    const { data: sentSwipes, error: sentError } = await supabase
-      .from('swipes')
-      .select('action')
-      .eq('swiper_user_id', user_id);
-
-    if (sentError) throw sentError;
-
-    // Swipes recibidos
-    const { data: receivedSwipes, error: receivedError } = await supabase
-      .from('swipes')
-      .select('action')
-      .eq('swiped_user_id', user_id);
-
-    if (receivedError) throw receivedError;
-
-    // Matches
-    const { data: matches, error: matchError } = await supabase
-      .from('match')
-      .select('id')
-      .or(`user1_id.eq.${user_id},user2_id.eq.${user_id}`);
-
-    if (matchError) throw matchError;
-
-    const stats = {
-      sent: {
-        total: sentSwipes ? sentSwipes.length : 0,
-        likes: sentSwipes ? sentSwipes.filter(s => s.action === 'like').length : 0,
-        dislikes: sentSwipes ? sentSwipes.filter(s => s.action === 'dislike').length : 0
-      },
-      received: {
-        total: receivedSwipes ? receivedSwipes.length : 0,
-        likes: receivedSwipes ? receivedSwipes.filter(s => s.action === 'like').length : 0,
-        dislikes: receivedSwipes ? receivedSwipes.filter(s => s.action === 'dislike').length : 0
-      },
-      matches: matches ? matches.length : 0
-    };
-
-    res.json({
-      success: true,
-      stats
-    });
-
-  } catch (error) {
-    console.error('Error en getSwipeStats:', error);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    });
-  }
-};
-
 module.exports = {
   createSwipe,
   getDiscoverUsers,
-  getUserMatches,
-  getSwipeStats
+  getUserMatches
 };

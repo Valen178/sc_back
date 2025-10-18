@@ -3,6 +3,22 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
+// Obtener planes públicamente (sin autenticación)
+const getPublicPlans = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('plan')
+      .select('id, name, price')
+      .order('price', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const getAllPlans = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -125,19 +141,37 @@ const getSubscription = async (req, res) => {
 const updateSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const { end_date } = req.body;
+    const { end_date, status } = req.body;
 
-    // Validar end_date
+    // Construir objeto de actualización
+    const updateData = {};
+    
+    if (status) {
+      const validStatuses = ['pending', 'active', 'cancelled', 'expired', 'payment_failed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: 'Invalid status', 
+          validStatuses 
+        });
+      }
+      updateData.status = status;
+    }
+
     if (end_date) {
       const endDate = new Date(end_date);
       if (isNaN(endDate.getTime())) {
         return res.status(400).json({ message: 'Invalid end_date format' });
       }
+      updateData.end_date = end_date;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
     }
 
     const { data, error } = await supabase
       .from('subscription')
-      .update({ end_date })
+      .update(updateData)
       .eq('id', id)
       .select(`
         *,
@@ -184,8 +218,14 @@ const createCheckoutSession = async (req, res) => {
     const { plan_id } = req.body;
     const user_id = req.user.id;
 
+    // Validar que plan_id esté presente y sea válido
     if (!plan_id) {
       return res.status(400).json({ message: 'Plan ID is required' });
+    }
+
+    // Validar tipo de dato
+    if (isNaN(plan_id)) {
+      return res.status(400).json({ message: 'Invalid plan ID format' });
     }
 
     // Verificar que el plan existe
@@ -218,53 +258,63 @@ const createCheckoutSession = async (req, res) => {
         user_id,
         plan_id,
         status: 'pending',
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 días desde ahora
       }])
       .select()
       .single();
 
     if (subscriptionError) throw subscriptionError;
 
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      customer_email: req.user.email, // Assuming user email is available
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: plan.name,
-            description: `Subscription to ${plan.name} plan`
+    try {
+      // Create Stripe checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        customer_email: req.user.email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: plan.name,
+              description: `Subscription to ${plan.name} plan`
+            },
+            unit_amount: Math.round(plan.price * 100),
+            recurring: {
+              interval: 'month'
+            }
           },
-          unit_amount: Math.round(plan.price * 100), // Ensure integer amount
-          recurring: {
-            interval: 'month'
-          }
-        },
-        quantity: 1,
-      }],
-      mode: 'subscription',
-      success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      metadata: {
+          quantity: 1,
+        }],
+        mode: 'subscription',
+        success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+        metadata: {
+          subscription_id: subscription.id,
+          user_id: user_id
+        }
+      });
+
+      // Update subscription with Stripe session ID
+      const { error: updateError } = await supabase
+        .from('subscription')
+        .update({ stripe_session_id: session.id })
+        .eq('id', subscription.id);
+
+      if (updateError) throw updateError;
+
+      res.json({
         subscription_id: subscription.id,
-        user_id: user_id
-      }
-    });
+        checkout_url: session.url
+      });
+    } catch (stripeError) {
+      // Rollback: Eliminar la suscripción si Stripe falla
+      await supabase
+        .from('subscription')
+        .delete()
+        .eq('id', subscription.id);
 
-    // Update subscription with Stripe session ID
-    const { error: updateError } = await supabase
-      .from('subscription')
-      .update({ stripe_session_id: session.id })
-      .eq('id', subscription.id);
-
-    if (updateError) throw updateError;
-
-    res.json({
-      subscription_id: subscription.id,
-      checkout_url: session.url
-    });
+      console.error('Stripe session creation failed:', stripeError);
+      throw stripeError;
+    }
   } catch (error) {
     console.error('Checkout session error:', error);
     res.status(500).json({ 
@@ -324,7 +374,7 @@ const cancelSubscription = async (req, res) => {
       .from('subscription')
       .update({
         status: 'cancelled',
-        end_date: new Date().toISOString()
+        end_date: new Date().toISOString() // Finaliza inmediatamente
       })
       .eq('id', subscription.id);
 
@@ -385,7 +435,7 @@ const getSubscriptionStatus = async (req, res) => {
       active: true,
       subscription_details: {
         plan_name: subscription.plan.name,
-        start_date: subscription.start_date,
+        start_date: subscription.created_at, // Usar created_at como inicio
         end_date: subscription.end_date,
         status: subscription.status
       }
@@ -395,7 +445,148 @@ const getSubscriptionStatus = async (req, res) => {
   }
 };
 
+// Webhook de Stripe para manejar eventos de pago
+const handleStripeWebhook = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    // Verificar la firma del webhook
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Manejar diferentes tipos de eventos
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        // Pago exitoso - activar suscripción
+        const session = event.data.object;
+        const subscription_id = session.metadata.subscription_id;
+        
+        if (subscription_id) {
+          const { error } = await supabase
+            .from('subscription')
+            .update({ 
+              status: 'active',
+              stripe_subscription_id: session.subscription || null,
+              stripe_customer_id: session.customer || null
+            })
+            .eq('id', subscription_id);
+
+          if (error) {
+            console.error('Error updating subscription to active:', error);
+          } else {
+            console.log(`Subscription ${subscription_id} activated successfully`);
+          }
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+        // Suscripción cancelada desde Stripe
+        const deletedSubscription = event.data.object;
+        const stripeSubId = deletedSubscription.id;
+
+        const { error: deleteError } = await supabase
+          .from('subscription')
+          .update({ 
+            status: 'cancelled',
+            end_date: new Date().toISOString() // Finaliza inmediatamente
+          })
+          .eq('stripe_subscription_id', stripeSubId)
+          .eq('status', 'active');
+
+        if (deleteError) {
+          console.error('Error cancelling subscription:', deleteError);
+        } else {
+          console.log(`Subscription ${stripeSubId} cancelled from Stripe`);
+        }
+        break;
+
+      case 'invoice.payment_failed':
+        // Fallo en el pago
+        const failedInvoice = event.data.object;
+        const failedSubId = failedInvoice.subscription;
+
+        const { error: failError } = await supabase
+          .from('subscription')
+          .update({ status: 'payment_failed' })
+          .eq('stripe_subscription_id', failedSubId);
+
+        if (failError) {
+          console.error('Error marking payment as failed:', failError);
+        } else {
+          console.log(`Payment failed for subscription ${failedSubId}`);
+        }
+        break;
+
+      case 'invoice.payment_succeeded':
+        // Pago exitoso (renovación)
+        const successInvoice = event.data.object;
+        const renewedSubId = successInvoice.subscription;
+
+        // Extender la fecha de fin de la suscripción por 30 días más
+        const newEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const { error: renewError } = await supabase
+          .from('subscription')
+          .update({ 
+            status: 'active',
+            end_date: newEndDate
+          })
+          .eq('stripe_subscription_id', renewedSubId);
+
+        if (renewError) {
+          console.error('Error renewing subscription:', renewError);
+        } else {
+          console.log(`Subscription ${renewedSubId} renewed successfully`);
+        }
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).json({ message: 'Webhook processing failed' });
+  }
+};
+
+// Función para marcar suscripciones expiradas (ejecutar con cron job)
+const markExpiredSubscriptions = async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('subscription')
+      .update({ status: 'expired' })
+      .eq('status', 'active')
+      .lt('end_date', now)
+      .select();
+
+    if (error) throw error;
+
+    const count = data ? data.length : 0;
+    console.log(`Marked ${count} subscriptions as expired`);
+
+    res.json({ 
+      message: `Successfully marked ${count} subscription(s) as expired`,
+      expired_subscriptions: data
+    });
+  } catch (error) {
+    console.error('Error marking expired subscriptions:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
+  getPublicPlans,
   getAllPlans,
   createPlan,
   deletePlan,
@@ -406,5 +597,7 @@ module.exports = {
   createCheckoutSession,
   verifyPaymentStatus,
   cancelSubscription,
-  getSubscriptionStatus
+  getSubscriptionStatus,
+  handleStripeWebhook,
+  markExpiredSubscriptions
 };

@@ -33,25 +33,7 @@ const getAllLocations = async (req, res) => {
   }
 };
 
-// Obtener ubicaciones por país
-const getLocationsByCountry = async (req, res) => {
-  try {
-    const { country } = req.params;
-    const { data, error } = await supabase
-      .from('location')
-      .select('*')
-      .eq('country', country);
-
-    if (error) throw error;
-
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 module.exports = {
   getAllSports,
-  getAllLocations,
-  getLocationsByCountry
+  getAllLocations
 };

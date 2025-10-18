@@ -1,20 +1,25 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
-const postController = require('../controllers/postController');
+const {
+  createPost,
+  getAllPosts,
+  getPost,
+  deletePost,
+  getUserPosts
+} = require('../controllers/postController');
 
-router.use(verifyToken);
+// Rutas públicas (sin autenticación)
+router.get('/', getAllPosts);
 
-// Create a new post (requires authentication)
-router.post('/', postController.createPost);
+// Rutas protegidas (requieren autenticación)
+router.post('/', verifyToken, createPost);
+router.get('/my-posts', verifyToken, getUserPosts);
 
-// Get all posts (public)
-router.get('/', postController.getAllPosts);
+// Rutas públicas
+router.get('/:id', getPost);
 
-// Get posts by specific user (public)
-router.get('/user/:userId', postController.getUserPosts);
-
-// Delete a post (requires authentication and ownership)
-router.delete('/:postId', verifyToken, postController.deletePost);
+// Rutas protegidas
+router.delete('/:id', verifyToken, deletePost);
 
 module.exports = router;
