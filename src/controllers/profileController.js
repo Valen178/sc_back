@@ -201,8 +201,95 @@ const deleteMyProfile = async (req, res) => {
   }
 };
 
+// Obtener perfil de otro usuario (para ver perfiles en matches/discover)
+const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const requesterId = req.user.id; // Usuario que hace la petición
+
+    // No permitir ver tu propio perfil con este endpoint
+    if (parseInt(userId) === requesterId) {
+      return res.status(400).json({ 
+        message: 'Use GET /profile/me to view your own profile' 
+      });
+    }
+
+    // Verificar que el usuario solicitado existe
+    const { data: targetUser, error: userError } = await supabase
+      .from('users')
+      .select('id, created_at')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Obtener el perfil del usuario solicitado
+    const profile = await getProfileByUserId(userId);
+
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+
+    // Opcional: Verificar si existe interacción (swipe o match)
+    // Esto añade una capa de privacidad - solo puedes ver perfiles con los que interactuaste
+    const { data: interaction } = await supabase
+      .from('swipes')
+      .select('*')
+      .or(`and(swiper_user_id.eq.${requesterId},swiped_user_id.eq.${userId}),and(swiper_user_id.eq.${userId},swiped_user_id.eq.${requesterId})`)
+      .limit(1);
+
+    // Verificar si hay match activo
+    const { data: match } = await supabase
+      .from('match')
+      .select('*, match_state!inner(*)')
+      .or(`and(user1_id.eq.${Math.min(requesterId, userId)},user2_id.eq.${Math.max(requesterId, userId)})`)
+      .eq('match_state.state', 'active')
+      .single();
+
+    // Información de contexto sobre la relación
+    const relationshipContext = {
+      has_interaction: interaction && interaction.length > 0,
+      has_match: !!match,
+      can_view_full_profile: !!match || (interaction && interaction.length > 0)
+    };
+
+    // Si no hay interacción, retornar perfil limitado (básico)
+    if (!relationshipContext.has_interaction) {
+      return res.json({
+        user_id: targetUser.id,
+        profile_type: profile.type,
+        profile: {
+          name: profile.profile.name,
+          photo_url: profile.profile.photo_url || null,
+          sport: profile.profile.sport,
+          location: profile.profile.location,
+          description: profile.profile.description || null
+        },
+        relationship: relationshipContext,
+        limited_view: true
+      });
+    }
+
+    // Si hay interacción o match, retornar perfil completo
+    res.json({
+      user_id: targetUser.id,
+      profile_type: profile.type,
+      profile: profile.profile,
+      relationship: relationshipContext,
+      limited_view: false
+    });
+
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getMyProfile,
   updateProfile,
-  deleteMyProfile
+  deleteMyProfile,
+  getUserProfile
 };

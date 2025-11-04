@@ -1,6 +1,6 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
-const { updateProfile, getMyProfile, deleteMyProfile } = require('../controllers/profileController');
+const { updateProfile, getMyProfile, deleteMyProfile, getUserProfile } = require('../controllers/profileController');
 
 const router = express.Router();
 
@@ -15,5 +15,8 @@ router.put('/me', updateProfile);
 
 // Eliminar mi perfil y usuario
 router.delete('/me', deleteMyProfile);
+
+// Obtener perfil de otro usuario (para matches/discover)
+router.get('/:userId', getUserProfile);
 
 module.exports = router;
