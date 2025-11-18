@@ -17,7 +17,7 @@ const app = express();
 // Configuración de CORS
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
-    ? 'http://localhost:5173' // Cambia esto por tu URL de producción
+    ? 'https://sport-connection.vercel.app' // Cambia esto por tu URL de producción
     : ['http://localhost:5173', 'http://localhost:3000'], // Puertos comunes para desarrollo
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
