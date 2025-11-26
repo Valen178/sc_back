@@ -986,6 +986,12 @@ Authorization: Bearer {token}
 - El usuario debe acceder a `checkout_url` para completar el pago
 - La suscripción se crea en estado `"pending"`
 - Cuando el pago se completa, Stripe enviará un webhook para activar la suscripción
+- **Configuración de Redirección:**
+  - `FRONTEND_URL` debe estar configurada en las variables de entorno
+  - Formato requerido: `https://dominio.com` (con protocolo completo)
+  - Para apps móviles sin frontend web, puede usar: `https://stripe.com/docs/payments/checkout`
+  - Después del pago, el usuario será redirigido a `${FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`
+  - Si cancela, será redirigido a `${FRONTEND_URL}/cancel`
 
 **Errores Posibles:**
 - `400`: Plan ID requerido o inválido
@@ -1098,19 +1104,49 @@ Authorization: Bearer {token}
 
 **Descripción:** Endpoint para recibir eventos de Stripe (pago exitoso, cancelación, etc.). **Uso interno de Stripe.**
 
+**Configuración Requerida:**
+- Variable de entorno `STRIPE_WEBHOOK_SECRET` debe estar configurada
+- El endpoint está excluido del parser JSON global para recibir el raw body
+- Stripe envía el body como Buffer para verificación de firma
+
 **Headers:**
 ```
 stripe-signature: {firma_de_stripe}
 Content-Type: application/json
 ```
 
-**Request Body:** Raw JSON de Stripe
+**Request Body:** Raw JSON de Stripe (procesado internamente como Buffer)
 
 **Eventos Manejados:**
-- `checkout.session.completed`: Activa la suscripción
+- `checkout.session.completed`: Activa la suscripción (cambia status de `pending` a `active`)
 - `customer.subscription.deleted`: Cancela la suscripción
 - `invoice.payment_failed`: Marca el pago como fallido
 - `invoice.payment_succeeded`: Renueva la suscripción (extiende 30 días)
+
+**Configuración en Stripe Dashboard:**
+1. Ir a **Developers → Webhooks → Add endpoint**
+2. URL: `https://tu-dominio.com/subscriptions/webhook`
+3. Seleccionar eventos:
+   - `checkout.session.completed`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+   - `invoice.payment_succeeded`
+4. Copiar el **Signing secret** y agregarlo como `STRIPE_WEBHOOK_SECRET` en `.env`
+
+**Testing Local con Stripe CLI:**
+```bash
+# Instalar Stripe CLI
+# https://stripe.com/docs/stripe-cli
+
+# Forward webhooks a tu servidor local
+stripe listen --forward-to localhost:3000/subscriptions/webhook
+
+# Usar el webhook secret que muestra el CLI
+# whsec_... → Agregarlo temporalmente a .env como STRIPE_WEBHOOK_SECRET
+
+# Trigger test event
+stripe trigger checkout.session.completed
+```
 
 **Respuesta Exitosa (200):**
 ```json
@@ -1118,6 +1154,29 @@ Content-Type: application/json
   "received": true
 }
 ```
+
+**Logs en Servidor (para debugging):**
+```
+Webhook received
+Body type: object
+Body is Buffer: true
+Signature present: true
+Endpoint secret configured: true
+✅ Webhook signature verified successfully
+Subscription 123 activated successfully
+```
+
+**Errores Posibles:**
+- `400`: Firma inválida (verificar `STRIPE_WEBHOOK_SECRET`)
+- `400`: Body no es Buffer (verificar configuración de `express.json()`)
+- `500`: Error procesando el evento (revisar logs del servidor)
+
+**Notas Importantes:**
+- ⚠️ El webhook **NO debe usar** middleware `verifyToken` porque Stripe no puede autenticarse con JWT
+- ⚠️ El endpoint debe recibir el **raw body** (Buffer), no un objeto JSON parseado
+- ⚠️ La verificación de firma es la única forma de validar que el request viene de Stripe
+- En producción, **SIEMPRE** verifica la firma del webhook antes de procesar
+- Para testing, puedes usar el Stripe CLI para enviar eventos de prueba
 
 ---
 

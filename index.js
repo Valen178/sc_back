@@ -25,7 +25,16 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
+
+// ⚠️ CRÍTICO: El webhook de Stripe NECESITA raw body para verificar la firma
+// Aplicar express.json() SOLO a rutas que no sean el webhook
+app.use((req, res, next) => {
+  if (req.originalUrl === '/subscriptions/webhook') {
+    next(); // Saltar el parser JSON para el webhook
+  } else {
+    express.json()(req, res, next); // Aplicar JSON parser a todas las demás rutas
+  }
+});
 
 // Middleware de seguridad básica
 app.use((req, res, next) => {

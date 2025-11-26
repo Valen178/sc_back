@@ -450,13 +450,21 @@ const handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  // Logs para debugging
+  console.log('Webhook received');
+  console.log('Body type:', typeof req.body);
+  console.log('Body is Buffer:', Buffer.isBuffer(req.body));
+  console.log('Signature present:', !!sig);
+  console.log('Endpoint secret configured:', !!endpointSecret);
+
   let event;
 
   try {
     // Verificar la firma del webhook
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('✅ Webhook signature verified successfully');
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('❌ Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
