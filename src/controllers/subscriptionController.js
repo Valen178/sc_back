@@ -265,6 +265,8 @@ const createCheckoutSession = async (req, res) => {
 
     if (subscriptionError) throw subscriptionError;
 
+    console.log('📋 Creating Stripe checkout session for subscription:', subscription.id);
+
     try {
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
@@ -288,10 +290,13 @@ const createCheckoutSession = async (req, res) => {
         success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.FRONTEND_URL}/cancel`,
         metadata: {
-          subscription_id: subscription.id,
-          user_id: user_id
+          subscription_id: subscription.id.toString(), // Asegurar que sea string
+          user_id: user_id.toString()
         }
       });
+
+      console.log('✅ Stripe session created:', session.id);
+      console.log('📋 Metadata sent to Stripe:', session.metadata);
 
       // Update subscription with Stripe session ID
       const { error: updateError } = await supabase
