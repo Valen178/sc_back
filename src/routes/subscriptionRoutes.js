@@ -14,6 +14,18 @@ const {
 // Rutas públicas (sin autenticación)
 router.get('/plans', getPublicPlans);
 
+// 🔍 ENDPOINT DE DIAGNÓSTICO TEMPORAL - Verificar configuración
+router.get('/webhook-config', (req, res) => {
+  res.json({
+    webhook_secret_configured: !!process.env.STRIPE_WEBHOOK_SECRET,
+    stripe_key_configured: !!process.env.STRIPE_SECRET_KEY,
+    webhook_secret_prefix: process.env.STRIPE_WEBHOOK_SECRET ? 
+      process.env.STRIPE_WEBHOOK_SECRET.substring(0, 10) + '...' : 'NOT SET',
+    node_env: process.env.NODE_ENV || 'not set',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Webhook de Stripe - DEBE procesar raw body antes que express.json()
 // Se aplica solo a esta ruta específica
 router.post('/webhook', 
