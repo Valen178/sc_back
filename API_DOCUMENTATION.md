@@ -1104,11 +1104,6 @@ Authorization: Bearer {token}
 
 **Descripción:** Endpoint para recibir eventos de Stripe (pago exitoso, cancelación, etc.). **Uso interno de Stripe.**
 
-**Configuración Requerida:**
-- Variable de entorno `STRIPE_WEBHOOK_SECRET` debe estar configurada
-- El endpoint está excluido del parser JSON global para recibir el raw body
-- Stripe envía el body como Buffer para verificación de firma
-
 **Headers:**
 ```
 stripe-signature: {firma_de_stripe}
@@ -1123,31 +1118,6 @@ Content-Type: application/json
 - `invoice.payment_failed`: Marca el pago como fallido
 - `invoice.payment_succeeded`: Renueva la suscripción (extiende 30 días)
 
-**Configuración en Stripe Dashboard:**
-1. Ir a **Developers → Webhooks → Add endpoint**
-2. URL: `https://tu-dominio.com/subscriptions/webhook`
-3. Seleccionar eventos:
-   - `checkout.session.completed`
-   - `customer.subscription.deleted`
-   - `invoice.payment_failed`
-   - `invoice.payment_succeeded`
-4. Copiar el **Signing secret** y agregarlo como `STRIPE_WEBHOOK_SECRET` en `.env`
-
-**Testing Local con Stripe CLI:**
-```bash
-# Instalar Stripe CLI
-# https://stripe.com/docs/stripe-cli
-
-# Forward webhooks a tu servidor local
-stripe listen --forward-to localhost:3000/subscriptions/webhook
-
-# Usar el webhook secret que muestra el CLI
-# whsec_... → Agregarlo temporalmente a .env como STRIPE_WEBHOOK_SECRET
-
-# Trigger test event
-stripe trigger checkout.session.completed
-```
-
 **Respuesta Exitosa (200):**
 ```json
 {
@@ -1155,28 +1125,35 @@ stripe trigger checkout.session.completed
 }
 ```
 
-**Logs en Servidor (para debugging):**
-```
-Webhook received
-Body type: object
-Body is Buffer: true
-Signature present: true
-Endpoint secret configured: true
-✅ Webhook signature verified successfully
-Subscription 123 activated successfully
+**Configuración en Stripe Dashboard:**
+
+1. Ve a **Developers → Webhooks → Add endpoint**
+2. Endpoint URL: `https://tu-dominio.com/subscriptions/webhook`
+3. Selecciona eventos:
+   - `checkout.session.completed`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+   - `invoice.payment_succeeded`
+4. Copia el **Signing secret** (`whsec_...`)
+5. Agrégalo como variable de entorno: `STRIPE_WEBHOOK_SECRET=whsec_...`
+
+**Testing con Stripe CLI:**
+```bash
+# Forward webhooks a servidor local
+stripe listen --forward-to localhost:3000/subscriptions/webhook
+
+# Trigger evento de prueba
+stripe trigger checkout.session.completed
 ```
 
 **Errores Posibles:**
-- `400`: Firma inválida (verificar `STRIPE_WEBHOOK_SECRET`)
-- `400`: Body no es Buffer (verificar configuración de `express.json()`)
-- `500`: Error procesando el evento (revisar logs del servidor)
+- `400`: Firma inválida - verificar `STRIPE_WEBHOOK_SECRET`
+- `500`: Error procesando evento - revisar logs del servidor
 
-**Notas Importantes:**
-- ⚠️ El webhook **NO debe usar** middleware `verifyToken` porque Stripe no puede autenticarse con JWT
-- ⚠️ El endpoint debe recibir el **raw body** (Buffer), no un objeto JSON parseado
-- ⚠️ La verificación de firma es la única forma de validar que el request viene de Stripe
-- En producción, **SIEMPRE** verifica la firma del webhook antes de procesar
-- Para testing, puedes usar el Stripe CLI para enviar eventos de prueba
+**Notas:**
+- El webhook NO usa autenticación JWT
+- Stripe verifica la autenticidad mediante firma criptográfica
+- La verificación de firma es obligatoria en producción
 
 ---
 
@@ -2041,7 +2018,6 @@ El token JWT contiene el siguiente payload:
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # JWT
 JWT_SECRET=your-secret-key
@@ -2049,6 +2025,7 @@ JWT_EXPIRES_IN=24h
 
 # Server
 PORT=3000
+NODE_ENV=development
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -2111,5 +2088,30 @@ Para probar los endpoints, puedes usar:
 
 ---
 
-**Documento generado:** 4 de noviembre de 2025  
-**Total de Endpoints:** 54
+## Estructura de la Base de Datos
+
+### Tabla `subscription`
+
+```sql
+subscription
+├── id (bigint, primary key)
+├── user_id (bigint, foreign key → users)
+├── plan_id (bigint, foreign key → plan)
+├── status (text: 'pending' | 'active' | 'cancelled' | 'expired' | 'payment_failed')
+├── end_date (timestamp)
+├── stripe_session_id (text) - ID de sesión de checkout de Stripe
+├── stripe_subscription_id (text) - ID de suscripción en Stripe (para renovaciones)
+├── stripe_customer_id (text) - ID de cliente en Stripe
+└── created_at (timestamp)
+```
+
+**Notas:**
+- `stripe_session_id`: Se asigna al crear el checkout session
+- `stripe_subscription_id` y `stripe_customer_id`: Se asignan cuando el webhook de Stripe confirma el pago
+- Los webhooks usan `stripe_subscription_id` para manejar renovaciones y cancelaciones
+
+---
+
+**Documento generado:** 26 de noviembre de 2025  
+**Total de Endpoints:** 54  
+**Última actualización:** Webhooks de Stripe configurados y funcionando

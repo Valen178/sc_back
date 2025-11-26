@@ -265,8 +265,6 @@ const createCheckoutSession = async (req, res) => {
 
     if (subscriptionError) throw subscriptionError;
 
-    console.log('📋 Creating Stripe checkout session for subscription:', subscription.id);
-
     try {
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
@@ -290,13 +288,10 @@ const createCheckoutSession = async (req, res) => {
         success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.FRONTEND_URL}/cancel`,
         metadata: {
-          subscription_id: subscription.id.toString(), // Asegurar que sea string
+          subscription_id: subscription.id.toString(),
           user_id: user_id.toString()
         }
       });
-
-      console.log('✅ Stripe session created:', session.id);
-      console.log('📋 Metadata sent to Stripe:', session.metadata);
 
       // Update subscription with Stripe session ID
       const { error: updateError } = await supabase
@@ -455,19 +450,8 @@ const handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  // Logs EXTENDIDOS para debugging
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🔔 Webhook received at:', new Date().toISOString());
-  console.log('📦 Body type:', typeof req.body);
-  console.log('📦 Body is Buffer:', Buffer.isBuffer(req.body));
-  console.log('📦 Body length:', req.body ? req.body.length : 'null');
-  console.log('✍️  Signature present:', !!sig);
-  console.log('🔑 Endpoint secret configured:', !!endpointSecret);
-  console.log('🔑 Endpoint secret (first 10 chars):', endpointSecret ? endpointSecret.substring(0, 10) + '...' : 'NOT SET');
-  
-  // Si no hay signature, es probable que el webhook no esté configurado correctamente
   if (!sig) {
-    console.error('❌ No signature header found - this is not a valid Stripe webhook');
+    console.error('❌ No stripe-signature header found');
     return res.status(400).json({ 
       error: 'No stripe-signature header',
       message: 'This endpoint only accepts requests from Stripe webhooks'
@@ -475,10 +459,9 @@ const handleStripeWebhook = async (req, res) => {
   }
 
   if (!endpointSecret) {
-    console.error('❌ STRIPE_WEBHOOK_SECRET not configured in environment');
+    console.error('❌ STRIPE_WEBHOOK_SECRET not configured');
     return res.status(500).json({ 
-      error: 'Webhook secret not configured',
-      message: 'Server misconfiguration - contact administrator'
+      error: 'Webhook secret not configured'
     });
   }
 
@@ -487,59 +470,41 @@ const handleStripeWebhook = async (req, res) => {
   try {
     // Verificar la firma del webhook
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('✅ Webhook signature verified successfully');
-    console.log('📨 Event type:', event.type);
-    console.log('📨 Event ID:', event.id);
+    console.log('✅ Webhook verified:', event.type, '- Event ID:', event.id);
   } catch (err) {
     console.error('❌ Webhook signature verification failed:', err.message);
-    console.error('❌ Error name:', err.name);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   // Manejar diferentes tipos de eventos
   try {
-    console.log('🔄 Processing event:', event.type);
-    
     switch (event.type) {
       case 'checkout.session.completed':
-        console.log('💳 Processing checkout.session.completed event');
         // Pago exitoso - activar suscripción
         const session = event.data.object;
         const subscription_id = session.metadata?.subscription_id;
         
-        console.log('📋 Session metadata:', session.metadata);
-        console.log('🆔 Subscription ID from metadata:', subscription_id);
-        console.log('🆔 Stripe subscription ID:', session.subscription);
-        console.log('🆔 Stripe customer ID:', session.customer);
-        
         if (!subscription_id) {
-          console.error('❌ No subscription_id found in session metadata');
-          console.error('Full session object:', JSON.stringify(session, null, 2));
+          console.error('❌ No subscription_id in metadata');
           break;
         }
         
-        if (subscription_id) {
-          console.log('📝 Attempting to update subscription in database...');
-          
-          const { data: updatedSub, error } = await supabase
-            .from('subscription')
-            .update({ 
-              status: 'active',
-              stripe_subscription_id: session.subscription || null,
-              stripe_customer_id: session.customer || null
-            })
-            .eq('id', subscription_id)
-            .select();
+        const { data: updatedSub, error } = await supabase
+          .from('subscription')
+          .update({ 
+            status: 'active',
+            stripe_subscription_id: session.subscription || null,
+            stripe_customer_id: session.customer || null
+          })
+          .eq('id', subscription_id)
+          .select();
 
-          if (error) {
-            console.error('❌ Error updating subscription to active:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
-          } else if (!updatedSub || updatedSub.length === 0) {
-            console.error('❌ No subscription found with ID:', subscription_id);
-          } else {
-            console.log('✅ Subscription activated successfully!');
-            console.log('Updated subscription:', updatedSub[0]);
-          }
+        if (error) {
+          console.error('❌ Error activating subscription:', error.message);
+        } else if (!updatedSub || updatedSub.length === 0) {
+          console.error('❌ Subscription not found:', subscription_id);
+        } else {
+          console.log('✅ Subscription activated:', subscription_id);
         }
         break;
 
@@ -552,15 +517,15 @@ const handleStripeWebhook = async (req, res) => {
           .from('subscription')
           .update({ 
             status: 'cancelled',
-            end_date: new Date().toISOString() // Finaliza inmediatamente
+            end_date: new Date().toISOString()
           })
           .eq('stripe_subscription_id', stripeSubId)
           .eq('status', 'active');
 
         if (deleteError) {
-          console.error('Error cancelling subscription:', deleteError);
+          console.error('❌ Error cancelling subscription:', deleteError.message);
         } else {
-          console.log(`Subscription ${stripeSubId} cancelled from Stripe`);
+          console.log('✅ Subscription cancelled:', stripeSubId);
         }
         break;
 
@@ -575,9 +540,9 @@ const handleStripeWebhook = async (req, res) => {
           .eq('stripe_subscription_id', failedSubId);
 
         if (failError) {
-          console.error('Error marking payment as failed:', failError);
+          console.error('❌ Error marking payment as failed:', failError.message);
         } else {
-          console.log(`Payment failed for subscription ${failedSubId}`);
+          console.log('⚠️ Payment failed for subscription:', failedSubId);
         }
         break;
 
@@ -598,14 +563,14 @@ const handleStripeWebhook = async (req, res) => {
           .eq('stripe_subscription_id', renewedSubId);
 
         if (renewError) {
-          console.error('Error renewing subscription:', renewError);
+          console.error('❌ Error renewing subscription:', renewError.message);
         } else {
-          console.log(`Subscription ${renewedSubId} renewed successfully`);
+          console.log('✅ Subscription renewed:', renewedSubId);
         }
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log('ℹ️ Unhandled event type:', event.type);
     }
 
     res.json({ received: true });
