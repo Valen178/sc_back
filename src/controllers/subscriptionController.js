@@ -285,7 +285,7 @@ const createCheckoutSession = async (req, res) => {
       customer_email: req.user.email,
       line_items: [{
         price_data: {
-        currency: 'ars',
+        currency: 'usd',
         product_data: {
           name: plan.name,
           description: `Subscription to ${plan.name} plan`
