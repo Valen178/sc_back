@@ -266,18 +266,9 @@ const createCheckoutSession = async (req, res) => {
     if (subscriptionError) throw subscriptionError;
 
     try {
-      // Determine if request is from mobile app based on user agent or custom header
-      const isMobileApp = req.headers['x-platform'] === 'mobile' || 
-                req.headers['user-agent']?.toLowerCase().includes('mobile-app');
-      
-      // Use deep links for mobile, web URLs for web clients
-      const successUrl = isMobileApp 
-      ? `sportsconnection://payment/success?session_id={CHECKOUT_SESSION_ID}&subscription_id=${subscription.id}`
-      : `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`;
-      
-      const cancelUrl = isMobileApp
-      ? `sportsconnection://payment/cancel?subscription_id=${subscription.id}`
-      : `${process.env.FRONTEND_URL}/cancel`;
+      // Use same web URLs for both mobile and web (mobile browsers will open the web app)
+      const successUrl = `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}&subscription_id=${subscription.id}`;
+      const cancelUrl = `${process.env.FRONTEND_URL}/cancel`;
 
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
@@ -302,8 +293,7 @@ const createCheckoutSession = async (req, res) => {
       cancel_url: cancelUrl,
       metadata: {
         subscription_id: subscription.id.toString(),
-        user_id: user_id.toString(),
-        platform: isMobileApp ? 'mobile' : 'web'
+        user_id: user_id.toString()
       }
       });
 
@@ -621,6 +611,76 @@ const markExpiredSubscriptions = async (req, res) => {
   }
 };
 
+// Verificar sesión de Stripe (público - para páginas success/cancel sin auth)
+const verifySession = async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    
+    if (!session_id) {
+      return res.status(400).json({ message: 'Session ID required' });
+    }
+
+    // Obtener sesión de Stripe
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // Verificar que la sesión esté completa
+    if (session.payment_status !== 'paid') {
+      return res.json({
+        paid: false,
+        status: session.payment_status,
+        message: 'Payment not completed'
+      });
+    }
+
+    // Obtener detalles de la suscripción
+    const subscription_id = session.metadata?.subscription_id;
+    
+    if (!subscription_id) {
+      return res.status(400).json({ message: 'Invalid session metadata' });
+    }
+
+    const { data: subscription, error } = await supabase
+      .from('subscription')
+      .select(`
+        *,
+        plan:plan_id (
+          name,
+          price
+        )
+      `)
+      .eq('id', subscription_id)
+      .single();
+
+    if (error) throw error;
+
+    if (!subscription) {
+      return res.status(404).json({ message: 'Subscription not found' });
+    }
+
+    res.json({
+      paid: true,
+      plan_name: subscription.plan.name,
+      amount: subscription.plan.price,
+      currency: 'usd',
+      status: subscription.status,
+      subscription_id: subscription.id,
+      customer_email: session.customer_details?.email || session.customer_email,
+      payment_date: session.created ? new Date(session.created * 1000).toISOString() : null
+    });
+
+  } catch (error) {
+    console.error('Error verifying session:', error);
+    res.status(500).json({ 
+      message: 'Error verifying payment session',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getPublicPlans,
   getAllPlans,
@@ -635,5 +695,6 @@ module.exports = {
   cancelSubscription,
   getSubscriptionStatus,
   handleStripeWebhook,
-  markExpiredSubscriptions
+  markExpiredSubscriptions,
+  verifySession
 };

@@ -8,11 +8,15 @@ const {
     cancelSubscription,
     getSubscriptionStatus,
     handleStripeWebhook,
-    markExpiredSubscriptions
+    markExpiredSubscriptions,
+    verifySession
 } = require('../controllers/subscriptionController');
 
 // Rutas públicas (sin autenticación)
 router.get('/plans', getPublicPlans);
+
+// Verificar sesión de Stripe (para páginas success/cancel)
+router.get('/verify-session', verifySession);
 
 // Webhook de Stripe - DEBE procesar raw body antes que express.json()
 // Se aplica solo a esta ruta específica
