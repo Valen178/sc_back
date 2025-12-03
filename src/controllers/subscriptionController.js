@@ -266,31 +266,45 @@ const createCheckoutSession = async (req, res) => {
     if (subscriptionError) throw subscriptionError;
 
     try {
+      // Determine if request is from mobile app based on user agent or custom header
+      const isMobileApp = req.headers['x-platform'] === 'mobile' || 
+                req.headers['user-agent']?.toLowerCase().includes('mobile-app');
+      
+      // Use deep links for mobile, web URLs for web clients
+      const successUrl = isMobileApp 
+      ? `sportsconnection://payment/success?session_id={CHECKOUT_SESSION_ID}&subscription_id=${subscription.id}`
+      : `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`;
+      
+      const cancelUrl = isMobileApp
+      ? `sportsconnection://payment/cancel?subscription_id=${subscription.id}`
+      : `${process.env.FRONTEND_URL}/cancel`;
+
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        customer_email: req.user.email,
-        line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: plan.name,
-              description: `Subscription to ${plan.name} plan`
-            },
-            unit_amount: Math.round(plan.price * 100),
-            recurring: {
-              interval: 'month'
-            }
-          },
-          quantity: 1,
-        }],
-        mode: 'subscription',
-        success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-        metadata: {
-          subscription_id: subscription.id.toString(),
-          user_id: user_id.toString()
+      payment_method_types: ['card'],
+      customer_email: req.user.email,
+      line_items: [{
+        price_data: {
+        currency: 'ars',
+        product_data: {
+          name: plan.name,
+          description: `Subscription to ${plan.name} plan`
+        },
+        unit_amount: Math.round(plan.price * 100),
+        recurring: {
+          interval: 'month'
         }
+        },
+        quantity: 1,
+      }],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        subscription_id: subscription.id.toString(),
+        user_id: user_id.toString(),
+        platform: isMobileApp ? 'mobile' : 'web'
+      }
       });
 
       // Update subscription with Stripe session ID

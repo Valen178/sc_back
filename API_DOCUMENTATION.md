@@ -1185,25 +1185,20 @@ stripe trigger checkout.session.completed
 
 ## Venues (Lugares Deportivos)
 
-### 26. Obtener Venues Cercanos
+### 26. Obtener Todos los Venues
 
 **Endpoint:** `GET /venues`
 
-**Descripción:** Obtiene lugares deportivos cercanos usando Google Maps API. Incluye cache de 24 horas.
+**Descripción:** Obtiene todos los lugares deportivos activos almacenados en la base de datos. Útil para mostrar pines en un mapa.
 
 **Headers:**
 ```
 Authorization: Bearer {token}
 ```
 
-**Query Parameters:**
-- `lat` (requerido): Latitud
-- `lng` (requerido): Longitud
-- `sport_id` (opcional): Filtrar por deporte específico
-
 **Ejemplo:**
 ```
-GET /api/venues?lat=34.0522&lng=-118.2437&sport_id=1
+GET /api/venues
 ```
 
 **Respuesta Exitosa (200):**
@@ -1212,43 +1207,51 @@ GET /api/venues?lat=34.0522&lng=-118.2437&sport_id=1
   "message": "Venues retrieved successfully",
   "data": [
     {
-      "place_id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "id": 1,
       "name": "LA Fitness",
       "address": "123 Main St, Los Angeles, CA",
       "lat": 34.0522,
       "lng": -118.2437,
-      "sport_id": 1,
       "phone": "+1234567890",
       "website": "https://lafitness.com",
-      "rating": 4.5,
-      "opening_hours": {
-        "open_now": true,
-        "weekday_text": [
-          "Monday: 5:00 AM – 11:00 PM",
-          /* ... más horarios ... */
-        ]
-      },
-      "photo_reference": "CmRaAAAA...",
-      "last_updated": "2025-10-22T10:00:00.000Z",
-      "is_active": true
+      "is_active": true,
+      "created_at": "2025-10-22T10:00:00.000Z",
+      "updated_at": "2025-10-22T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Gold's Gym",
+      "address": "456 Sunset Blvd, Los Angeles, CA",
+      "lat": 34.0983,
+      "lng": -118.3267,
+      "phone": "+1234567891",
+      "website": "https://goldsgym.com",
+      "is_active": true,
+      "created_at": "2025-10-23T11:00:00.000Z",
+      "updated_at": "2025-10-23T11:00:00.000Z"
     }
     /* ... más venues ... */
   ]
 }
 ```
 
+**Notas:**
+- Retorna todos los venues con `is_active = true`
+- Los venues están ordenados alfabéticamente por nombre
+- Los datos se obtienen directamente de la base de datos (no usa Google Maps API)
+- Ideal para renderizar múltiples marcadores en mapas (Google Maps, Mapbox, Leaflet)
+
 **Errores Posibles:**
-- `400`: Latitud y longitud requeridas
 - `401`: Token inválido
-- `500`: Error del servidor o de Google Maps API
+- `500`: Error del servidor
 
 ---
 
 ### 27. Obtener Detalles de un Venue
 
-**Endpoint:** `GET /venues/:placeId`
+**Endpoint:** `GET /venues/:id`
 
-**Descripción:** Obtiene detalles completos de un venue específico por su Place ID de Google.
+**Descripción:** Obtiene detalles completos de un venue específico por su ID.
 
 **Headers:**
 ```
@@ -1256,11 +1259,11 @@ Authorization: Bearer {token}
 ```
 
 **Parámetros de URL:**
-- `placeId`: Google Place ID
+- `id`: ID del venue en la base de datos
 
 **Ejemplo:**
 ```
-GET /api/venues/ChIJN1t_tDeuEmsRUsoyG83frY4
+GET /api/venues/1
 ```
 
 **Respuesta Exitosa (200):**
@@ -1268,25 +1271,24 @@ GET /api/venues/ChIJN1t_tDeuEmsRUsoyG83frY4
 {
   "message": "Venue details retrieved successfully",
   "data": {
-    "place_id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "id": 1,
     "name": "LA Fitness",
     "address": "123 Main St, Los Angeles, CA",
     "lat": 34.0522,
     "lng": -118.2437,
     "phone": "+1234567890",
     "website": "https://lafitness.com",
-    "rating": 4.5,
-    "opening_hours": { /* ... */ },
-    "photo_reference": "CmRaAAAA...",
-    "last_updated": "2025-10-22T10:00:00.000Z",
-    "is_active": true
+    "is_active": true,
+    "created_at": "2025-10-22T10:00:00.000Z",
+    "updated_at": "2025-10-22T10:00:00.000Z"
   }
 }
 ```
 
 **Errores Posibles:**
 - `401`: Token inválido
-- `500`: Error del servidor o de Google Maps API
+- `404`: Venue not found
+- `500`: Error del servidor
 
 ---
 
@@ -2032,9 +2034,6 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=http://localhost:3000/api/auth/google/callback
 
-# Google Maps
-GOOGLE_MAPS_API_KEY=your-google-maps-api-key
-
 # Stripe
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -2067,7 +2066,7 @@ FRONTEND_URL=http://localhost:5173
 
 4. **Una Suscripción por Usuario**: No se puede crear una nueva suscripción si ya existe una activa.
 
-5. **Cache de Venues**: Los resultados de Google Maps se cachean por 24 horas en la base de datos.
+5. **Cache de Venues**: Los venues se obtienen directamente de la base de datos sin integración con Google Maps API.
 
 ### Testing
 
@@ -2089,6 +2088,28 @@ Para probar los endpoints, puedes usar:
 ---
 
 ## Estructura de la Base de Datos
+
+### Tabla `sports_venues`
+
+```sql
+sports_venues
+├── id (bigint, primary key)
+├── name (character varying, not null)
+├── address (character varying, not null)
+├── lat (numeric, not null) - Latitud para posicionamiento en mapa
+├── lng (numeric, not null) - Longitud para posicionamiento en mapa
+├── phone (character varying)
+├── website (character varying)
+├── is_active (boolean, default: true)
+├── created_at (timestamp with time zone, default: now())
+└── updated_at (timestamp with time zone, default: now())
+```
+
+**Notas:**
+- La tabla almacena información básica de clubes deportivos
+- `lat` y `lng` son coordenadas GPS estándar compatibles con cualquier API de mapas
+- Compatible con Google Maps, Mapbox, Leaflet y otros servicios de mapeo
+- Los venues se gestionan manualmente (sin integración automática con Google Places)
 
 ### Tabla `subscription`
 
@@ -2114,4 +2135,4 @@ subscription
 
 **Documento generado:** 26 de noviembre de 2025  
 **Total de Endpoints:** 54  
-**Última actualización:** Webhooks de Stripe configurados y funcionando
+**Última actualización:** 30 de noviembre de 2025 - Sistema de venues simplificado
