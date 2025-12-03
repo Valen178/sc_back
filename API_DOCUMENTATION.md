@@ -4,6 +4,8 @@
 
 **Versión:** 1.0.0
 
+**Última actualización:** 3 de Diciembre, 2025
+
 ## Tabla de Contenidos
 
 1. [Autenticación](#autenticación)
@@ -582,7 +584,7 @@ Authorization: Bearer {token}
 
 **Endpoint:** `POST /swipe`
 
-**Descripción:** Registra un like o dislike a otro usuario. Si ambos usuarios se dan like, se crea un match automáticamente.
+**Descripción:** Registra un like o dislike a otro usuario. Si ambos usuarios se dan like, se crea un match automáticamente. **Usuarios gratuitos tienen un límite de 10 swipes cada 24 horas.**
 
 **Headers:**
 ```
@@ -602,13 +604,17 @@ Authorization: Bearer {token}
 - No puedes dar swipe a ti mismo
 - Solo puedes interactuar con usuarios del mismo deporte
 - Solo se permite una interacción por par de usuarios
+- **Usuarios gratuitos**: Límite de 10 swipes cada 24 horas
+- **Usuarios premium**: Swipes ilimitados
 
 **Respuesta Exitosa (201) - Sin Match:**
 ```json
 {
   "success": true,
   "match": false,
-  "message": "Swipe registrado"
+  "message": "Swipe registrado",
+  "swipes_remaining": 7,
+  "is_premium": false
 }
 ```
 
@@ -617,7 +623,20 @@ Authorization: Bearer {token}
 {
   "success": true,
   "match": true,
-  "message": "¡Match creado!"
+  "message": "¡Match creado!",
+  "swipes_remaining": 6,
+  "is_premium": false
+}
+```
+
+**Respuesta Exitosa (201) - Usuario Premium:**
+```json
+{
+  "success": true,
+  "match": false,
+  "message": "Swipe registrado",
+  "swipes_remaining": null,
+  "is_premium": true
 }
 ```
 
@@ -628,7 +647,18 @@ Authorization: Bearer {token}
 - `400`: Solo puedes interactuar con usuarios del mismo deporte
 - `400`: Ya interactuaste con este usuario
 - `401`: Token inválido
+- `403`: Límite diario de swipes alcanzado (usuarios gratuitos)
 - `500`: Error del servidor
+
+**Error de Límite Alcanzado (403):**
+```json
+{
+  "error": "Daily swipe limit reached",
+  "message": "Límite diario de swipes alcanzado. Mejora a premium para swipes ilimitados.",
+  "remaining": 0,
+  "requires_subscription": true
+}
+```
 
 ---
 
@@ -636,7 +666,7 @@ Authorization: Bearer {token}
 
 **Endpoint:** `GET /swipe/discover`
 
-**Descripción:** Obtiene una lista de usuarios disponibles para dar swipe, filtrados por deporte y tipo de perfil.
+**Descripción:** Obtiene una lista de usuarios disponibles para dar swipe, filtrados por deporte y tipo de perfil. **Los filtros avanzados requieren suscripción premium.**
 
 **Headers:**
 ```
@@ -644,17 +674,23 @@ Authorization: Bearer {token}
 ```
 
 **Query Parameters:**
-- `profile_type_filter` (opcional): `"team"`, `"agent"`, `"both"` (solo para atletas)
+- `profile_type_filter` (opcional - **solo premium**): `"team"`, `"agent"`, `"both"` (solo para atletas)
 - `limit` (opcional): Número de usuarios a retornar (default: 10)
 
 **Reglas de Filtrado:**
-- **Athletes** ven: Teams y Agents (filtrable)
+- **Athletes** ven: Teams y Agents (filtrable solo con premium)
 - **Teams** ven: Solo Athletes
 - **Agents** ven: Solo Athletes
 - Solo se muestran usuarios del mismo deporte
 - Se excluyen usuarios ya vistos (con swipe previo)
+- **Filtros avanzados**: Requieren suscripción premium activa
 
-**Ejemplo de Request:**
+**Ejemplo de Request (Sin Filtro - Gratuito):**
+```
+GET /api/swipe/discover?limit=20
+```
+
+**Ejemplo de Request (Con Filtro - Premium):**
 ```
 GET /api/swipe/discover?profile_type_filter=team&limit=20
 ```
@@ -700,8 +736,20 @@ GET /api/swipe/discover?profile_type_filter=team&limit=20
 ```
 
 **Errores Posibles:**
+- `400`: Tipo de filtro inválido
 - `401`: Token inválido
+- `403`: Los filtros avanzados requieren suscripción premium
 - `500`: Error del servidor
+
+**Error de Filtro Premium (403):**
+```json
+{
+  "error": "Advanced filters require premium subscription",
+  "message": "Los filtros avanzados requieren una suscripción premium",
+  "requires_subscription": true,
+  "feature": "profile_type_filters"
+}
+```
 
 ---
 
@@ -751,6 +799,106 @@ Authorization: Bearer {token}
 **Errores Posibles:**
 - `401`: Token inválido
 - `500`: Error del servidor
+
+---
+
+### 14. Obtener Estadísticas de Swipes
+
+**Endpoint:** `GET /swipe/stats`
+
+**Descripción:** Obtiene las estadísticas de swipes del usuario: límite diario, swipes restantes y estado premium.
+
+**Headers:**
+```
+Authorization: Bearer {token}
+```
+
+**Respuesta Exitosa (200) - Usuario Gratuito:**
+```json
+{
+  "swipes_remaining": 7,
+  "is_premium": false,
+  "daily_limit": 10
+}
+```
+
+**Respuesta Exitosa (200) - Usuario Premium:**
+```json
+{
+  "swipes_remaining": null,
+  "is_premium": true,
+  "daily_limit": 10
+}
+```
+
+**Notas:**
+- `swipes_remaining`: Número de swipes disponibles (null si es premium)
+- `is_premium`: Indica si el usuario tiene suscripción activa
+- `daily_limit`: Límite diario para usuarios gratuitos
+- Los swipes se resetean cada 24 horas
+
+**Errores Posibles:**
+- `401`: Token inválido
+- `500`: Error del servidor
+
+---
+
+### 15. Contacto Directo (Solo Premium)
+
+**Endpoint:** `GET /swipe/contact/:target_user_id`
+
+**Descripción:** Obtiene la información de contacto completa de otro usuario sin necesidad de match. **Requiere suscripción premium activa.**
+
+**Headers:**
+```
+Authorization: Bearer {token}
+```
+
+**Parámetros de URL:**
+- `target_user_id`: ID del usuario cuya información se desea obtener
+
+**Ejemplo:**
+```
+GET /api/swipe/contact/10
+```
+
+**Reglas de Negocio:**
+- **Solo usuarios premium** pueden acceder a este endpoint
+- Ambos usuarios deben estar en el **mismo deporte**
+- No se requiere match previo ni interacción
+- Retorna email, teléfono, Instagram y Twitter
+
+**Respuesta Exitosa (200):**
+```json
+{
+  "contact_info": {
+    "email": "player@example.com",
+    "phone": "+1234567890",
+    "instagram": "@player_ig",
+    "twitter": "@player_x"
+  },
+  "profile_type": "athlete",
+  "name": "John",
+  "last_name": "Doe"
+}
+```
+
+**Errores Posibles:**
+- `400`: Solo puedes contactar usuarios del mismo deporte
+- `401`: Token inválido
+- `403`: El contacto directo requiere suscripción premium
+- `404`: Usuario o perfil no encontrado
+- `500`: Error del servidor
+
+**Error de Premium Requerido (403):**
+```json
+{
+  "error": "Direct contact requires premium subscription",
+  "message": "El contacto directo requiere una suscripción premium",
+  "requires_subscription": true,
+  "feature": "direct_contact"
+}
+```
 
 ---
 
@@ -2067,6 +2215,17 @@ FRONTEND_URL=http://localhost:5173
 4. **Una Suscripción por Usuario**: No se puede crear una nueva suscripción si ya existe una activa.
 
 5. **Cache de Venues**: Los venues se obtienen directamente de la base de datos sin integración con Google Maps API.
+
+6. **Sistema Premium - Límite de Swipes**:
+   - **Usuarios Gratuitos**: 10 swipes por día (ventana rodante de 24 horas)
+   - **Usuarios Premium**: Swipes ilimitados
+   - El límite se resetea automáticamente cada 24 horas desde el primer swipe del día
+   - Consultar `/swipe/stats` para verificar swipes restantes
+
+7. **Funcionalidades Premium**:
+   - **Filtros Avanzados**: Solo athletes premium pueden filtrar por team/agent en `/swipe/discover`
+   - **Contacto Directo**: Solo usuarios premium pueden usar `/swipe/contact/:id` para obtener información de contacto sin match
+   - Todas las funcionalidades premium requieren suscripción activa (`status: 'active'` en tabla `subscription`)
 
 ### Testing
 
